@@ -59,10 +59,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // buff high bpm at high ar cause iirc aetrna called it hard once
             double ar = 13 - (osuCurrObj.ApproachRateTime / 150);
+            double arbitraryValue = 4;
             double minARBonus = 10.5;
-            double arbitraryValue = 0.025;
-            if (ar > (minARBonus - 1))
-                speedBonus *= Math.Max(Math.Pow(ar - (minARBonus - 1), 2) * arbitraryValue + (1 - arbitraryValue), 1);
+            if (ar > minARBonus)
+                speedBonus *= 1 + Math.Pow((ar - minARBonus), 2) / arbitraryValue;
 
             double travelDistance = osuPrevObj?.TravelDistance ?? 0;
             double distance = Math.Min(single_spacing_threshold, travelDistance + osuCurrObj.MinimumJumpDistance);
