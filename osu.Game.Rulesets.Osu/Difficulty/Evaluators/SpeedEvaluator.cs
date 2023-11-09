@@ -12,7 +12,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
     {
         private const double single_spacing_threshold = 125;
         private const double min_speed_bonus = 75; // ~200BPM
+        private const double min_ar_bonus = 10.7; // ~200BPM
         private const double speed_balancing_factor = 40;
+        private const double ar_bonus_balancing_factor = 10;
         private const double reaction_time = 215;
 
         /// <summary>
@@ -54,6 +56,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             if (strainTime < min_speed_bonus)
                 speedBonus = 1 + 0.75 * Math.Pow((min_speed_bonus - strainTime) / speed_balancing_factor, 2);
+
+            // buff high bpm at high ar cause iirc aetrna called it hard once
+            double ar = 13 - (osuCurrObj.ApproachRateTime / 150);
+            double arbitraryValue = 4;
+            double minARBonus = 10.5;
+            if (ar > minARBonus)
+                speedBonus *= 1 + Math.Pow((ar - minARBonus), 2) / arbitraryValue;
 
             double travelDistance = osuPrevObj?.TravelDistance ?? 0;
             double distance = Math.Min(single_spacing_threshold, travelDistance + osuCurrObj.MinimumJumpDistance);
