@@ -67,9 +67,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double angle = osuCurrObj.Angle.Value;
 
                 if (angle < Math.PI / 2)
-                    angleBonus = 1.25;
+                    angleBonus = 1.1667 + Math.Pow(Math.Sin(1.5 * (2 * Math.PI - angle)), 2) / 6;
                 else if (angle < angle_bonus_begin)
-                    angleBonus = 1 + Math.Pow(Math.Sin(1.5 * (angle_bonus_begin - angle)), 2) / 4;
+                    angleBonus = 1 + Math.Pow(Math.Sin((angle_bonus_begin - angle)), 2) / 3;
             }
 
             return (speedBonus + angleBonus * speedBonus * Math.Pow(distance / single_spacing_threshold, 3.5)) * doubletapness / strainTime;
