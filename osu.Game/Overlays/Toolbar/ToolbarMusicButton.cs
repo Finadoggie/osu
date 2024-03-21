@@ -19,7 +19,7 @@ using osuTK.Input;
 
 namespace osu.Game.Overlays.Toolbar
 {
-    public class ToolbarMusicButton : ToolbarOverlayToggleButton
+    public partial class ToolbarMusicButton : ToolbarOverlayToggleButton
     {
         private Circle volumeBar;
 
@@ -28,7 +28,7 @@ namespace osu.Game.Overlays.Toolbar
         public ToolbarMusicButton()
         {
             Hotkey = GlobalAction.ToggleNowPlaying;
-            AutoSizeAxes = Axes.X;
+            ButtonContent.AutoSizeAxes = Axes.X;
         }
 
         [BackgroundDependencyLoader(true)]
