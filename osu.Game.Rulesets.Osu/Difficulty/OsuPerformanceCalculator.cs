@@ -268,7 +268,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             return Math.Max(countMiss, comboBasedMissCount);
         }
-        private double calculateEffectiveAccuracy(double countGreat, double countOk, double countMeh, double countMiss, double totalHits) => (countGreat * 6 + countOk * 2 + countMeh + countMiss * 0) / (double)(totalHits * 6);
+        private double calculateEffectiveAccuracy(double countGreat, double countOk, double countMeh, double countMiss, double totalHits) => (countGreat * 6 + countOk * 2 + countMeh + countMiss * 2) / (double)(totalHits * 6);
 
         private double getComboScalingFactor(OsuDifficultyAttributes attributes) => attributes.MaxCombo <= 0 ? 1.0 : Math.Min(Math.Pow(scoreMaxCombo, 0.8) / Math.Pow(attributes.MaxCombo, 0.8), 1.0);
         private int totalHits => countGreat + countOk + countMeh + countMiss;
