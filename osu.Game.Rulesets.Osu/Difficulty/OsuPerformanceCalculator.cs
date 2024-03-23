@@ -25,6 +25,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private double effectiveMissCount;
         private int amountHitObjectsWithAccuracy;
 
+        private double estimateDifficultSliders;
+        private double estimateSliderEndsDropped;
+
         public OsuPerformanceCalculator()
             : base(new OsuRuleset())
         {
@@ -41,13 +44,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             countMiss = score.Statistics.GetValueOrDefault(HitResult.Miss);
             effectiveMissCount = calculateEffectiveMissCount(osuAttributes);
 
+            // We assume 15% of sliders in a map are difficult since there's no way to tell from the performance calculator.
+            estimateDifficultSliders = osuAttributes.SliderCount * 0.15;
+            estimateSliderEndsDropped = Math.Clamp(Math.Min(countOk + countMeh + countMiss, attributes.MaxCombo - scoreMaxCombo), 0, estimateDifficultSliders);
+
             amountHitObjectsWithAccuracy = osuAttributes.HitCircleCount;
             // Potential merge with #27063
             //if (!score.Mods.Any(h => h is OsuModClassic cl && cl.NoSliderHeadAccuracy.Value))
             //    amountHitObjectsWithAccuracy += osuAttributes.SliderCount;
 
             if (amountHitObjectsWithAccuracy > 0)
-                accuracy = calculateEffectiveAccuracy(countGreat - (totalHits - amountHitObjectsWithAccuracy), countOk, countMeh, countMiss, amountHitObjectsWithAccuracy);
+                accuracy = Math.Max(calculateEffectiveAccuracy(countGreat - (totalHits - amountHitObjectsWithAccuracy), countOk, countMeh, countMiss, amountHitObjectsWithAccuracy), 0);
             else
                 accuracy = 0;
 
@@ -127,12 +134,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 aimValue *= 1.0 + 0.04 * (12.0 - attributes.ApproachRate);
             }
 
-            // We assume 15% of sliders in a map are difficult since there's no way to tell from the performance calculator.
-            double estimateDifficultSliders = attributes.SliderCount * 0.15;
-
             if (attributes.SliderCount > 0)
             {
-                double estimateSliderEndsDropped = Math.Clamp(Math.Min(countOk + countMeh + countMiss, attributes.MaxCombo - scoreMaxCombo), 0, estimateDifficultSliders);
                 double sliderNerfFactor = (1 - attributes.SliderFactor) * Math.Pow(1 - estimateSliderEndsDropped / estimateDifficultSliders, 3) + attributes.SliderFactor;
                 aimValue *= sliderNerfFactor;
             }
