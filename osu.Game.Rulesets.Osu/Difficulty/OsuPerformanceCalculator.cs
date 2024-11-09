@@ -65,11 +65,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 if (usingClassicSliderAccuracy)
                 {
                     // Consider that full combo is maximum combo minus dropped slider tails since they don't contribute to combo but also don't break it
-                    // In classic scores we can't know the amount of dropped sliders so we estimate to 10% of all sliders on the map
-                    double fullComboThreshold = attributes.MaxCombo - 0.1 * osuAttributes.SliderCount;
+                    // Of course, anything that isn't guaranteed to be a slider tail drop *could* break combo,
+                    // so we should really only remove 1 combo to account for the slider tail being the last object
+                    double fullComboThreshold = attributes.MaxCombo - 1;
 
                     if (scoreMaxCombo < fullComboThreshold)
-                        effectiveMissCount = fullComboThreshold / Math.Max(1.0, scoreMaxCombo);
+                        // There's no reason that every ounce of lost combo couldn't be from one really long slider
+                        // As such, we must assume that every bit of lost combo is a dropped slider tick on a really long slider
+                        // And because slider tick misses cannot be differentiated from actual misses,
+                        // by the transitive property, all bits of combo are misses
+                        // Any unnecessary collateral is caught by the imperfect hit count
+                        effectiveMissCount = fullComboThreshold - scoreMaxCombo;
 
                     // In classic scores there can't be more misses than a sum of all non-perfect judgements
                     effectiveMissCount = Math.Min(effectiveMissCount, totalImperfectHits);
