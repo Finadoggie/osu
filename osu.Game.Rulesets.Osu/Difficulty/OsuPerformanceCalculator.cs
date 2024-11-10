@@ -79,6 +79,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
                     // In classic scores there can't be more misses than a sum of all non-perfect judgements
                     effectiveMissCount = Math.Min(effectiveMissCount, totalImperfectHits);
+                    effectiveMissCount = Math.Min(effectiveMissCount, osuAttributes.SliderCount + countMiss);
                 }
                 else
                 {
