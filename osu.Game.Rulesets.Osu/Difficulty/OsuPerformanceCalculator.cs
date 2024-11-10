@@ -66,7 +66,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 {
                     // Consider that full combo is maximum combo minus dropped slider tails since they don't contribute to combo but also don't break it
                     // Of course, anything that isn't guaranteed to be a slider tail drop *could* break combo,
-                    // so we should really only remove 1 combo to account for the slider tail being the last object
+                    // so we should really only remove 1 combo to account for a slider being the last object
                     double fullComboThreshold = attributes.MaxCombo - 1;
 
                     if (scoreMaxCombo < fullComboThreshold)
