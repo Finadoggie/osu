@@ -73,7 +73,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                         // There's no reason that every ounce of lost combo couldn't be from one really long slider
                         // As such, we must assume that every bit of lost combo is a dropped slider tick on a really long slider
                         // And because slider tick misses cannot be differentiated from actual misses,
-                        // by the transitive property, all bits of combo are misses
+                        // by the transitive property, all bits of lost combo are misses
                         // Any unnecessary collateral is caught by the imperfect hit count
                         effectiveMissCount = fullComboThreshold - scoreMaxCombo;
 
