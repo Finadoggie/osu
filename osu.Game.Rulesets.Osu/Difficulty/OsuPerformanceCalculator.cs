@@ -120,7 +120,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                     Math.Pow(speedValue, 1.1) +
                     Math.Pow(accuracyValue, 1.1) +
                     Math.Pow(flashlightValue, 1.1), 1.0 / 1.1
-                ) * 1.15;
+                ) * multiplier;
 
             return new OsuPerformanceAttributes
             {
