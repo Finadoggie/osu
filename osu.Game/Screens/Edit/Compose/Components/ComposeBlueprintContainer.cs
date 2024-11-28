@@ -68,6 +68,9 @@ namespace osu.Game.Screens.Edit.Compose.Components
             SampleBankTernaryStates = createSampleBankTernaryButtons(SelectionHandler.SelectionBankStates).ToArray();
             SampleAdditionBankTernaryStates = createSampleBankTernaryButtons(SelectionHandler.SelectionAdditionBankStates).ToArray();
 
+            SelectionHandler.AutoSelectionBankEnabled.BindValueChanged(_ => updateAutoBankTernaryButtonTooltip(), true);
+            SelectionHandler.SelectionAdditionBanksEnabled.BindValueChanged(_ => updateAdditionBankTernaryButtonTooltips(), true);
+
             AddInternal(new DrawableRulesetDependenciesProvidingContainer(Composer.Ruleset)
             {
                 Child = placementBlueprintContainer
@@ -288,14 +291,37 @@ namespace osu.Game.Screens.Edit.Compose.Components
             return null;
         }
 
+        private void updateAutoBankTernaryButtonTooltip()
+        {
+            bool enabled = SelectionHandler.AutoSelectionBankEnabled.Value;
+
+            var autoBankButton = SampleBankTernaryStates.Single(t => t.Bindable == SelectionHandler.SelectionBankStates[EditorSelectionHandler.HIT_BANK_AUTO]);
+            autoBankButton.Enabled.Value = enabled;
+            autoBankButton.Tooltip = !enabled ? "Auto normal bank can only be used during hit object placement" : string.Empty;
+        }
+
+        private void updateAdditionBankTernaryButtonTooltips()
+        {
+            bool enabled = SelectionHandler.SelectionAdditionBanksEnabled.Value;
+
+            foreach (var ternaryButton in SampleAdditionBankTernaryStates)
+            {
+                ternaryButton.Enabled.Value = enabled;
+                ternaryButton.Tooltip = !enabled ? "Add an addition sample first to be able to set a bank" : string.Empty;
+            }
+        }
+
         #region Placement
 
         /// <summary>
         /// Refreshes the current placement tool.
         /// </summary>
-        private void refreshTool()
+        private void refreshPlacement()
         {
-            removePlacement();
+            CurrentPlacement?.EndPlacement(false);
+            CurrentPlacement?.Expire();
+            CurrentPlacement = null;
+
             ensurePlacementCreated();
         }
 
@@ -321,21 +347,24 @@ namespace osu.Game.Screens.Edit.Compose.Components
                 {
                     case PlacementBlueprint.PlacementState.Waiting:
                         if (!Composer.CursorInPlacementArea)
-                            removePlacement();
+                            CurrentPlacement.Hide();
+                        else
+                            CurrentPlacement.Show();
+
+                        break;
+
+                    case PlacementBlueprint.PlacementState.Active:
+                        CurrentPlacement.Show();
                         break;
 
                     case PlacementBlueprint.PlacementState.Finished:
-                        removePlacement();
+                        refreshPlacement();
                         break;
                 }
-            }
 
-            if (Composer.CursorInPlacementArea)
-                ensurePlacementCreated();
-
-            // updates the placement with the latest editor clock time.
-            if (CurrentPlacement != null)
+                // updates the placement with the latest editor clock time.
                 updatePlacementTimeAndPosition();
+            }
         }
 
         protected override bool OnMouseMove(MouseMoveEvent e)
@@ -363,7 +392,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         private void hitObjectAdded(HitObject obj)
         {
             // refresh the tool to handle the case of placement completing.
-            refreshTool();
+            refreshPlacement();
 
             // on successful placement, the new combo button should be reset as this is the most common user interaction.
             if (Beatmap.SelectedHitObjects.Count == 0)
@@ -392,14 +421,7 @@ namespace osu.Game.Screens.Edit.Compose.Components
         public void CommitIfPlacementActive()
         {
             CurrentPlacement?.EndPlacement(CurrentPlacement.PlacementActive == PlacementBlueprint.PlacementState.Active);
-            removePlacement();
-        }
-
-        private void removePlacement()
-        {
-            CurrentPlacement?.EndPlacement(false);
-            CurrentPlacement?.Expire();
-            CurrentPlacement = null;
+            refreshPlacement();
         }
 
         private CompositionTool currentTool;
