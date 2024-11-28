@@ -38,10 +38,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             var peaks = GetCurrentStrainPeaks().Where(p => p > 0).ToList();
 
             // Nerf earliest strains because retry-spamming trivializes patterns which are early in the map
-            double strainLength = 400;
+            const double strainLength = 400;
             double retryBuffer = 3600 / strainLength;
             double arbitraryMultiplier = -1.15;
-            double arbitraryConstant = -arbitraryMultiplier / (retryBuffer + 150) + 1; // Byffs anything after 1 minute worth of strains
+            double breakEvenPoint = 60;
+            double arbitraryConstant = -arbitraryMultiplier / (retryBuffer + breakEvenPoint / (strainLength / 1000)) + 1; // Buffs anything after 1 minute's worth of strains
             for (int i = 0; i < peaks.Count; i++)
             {
                 peaks[i] *= arbitraryMultiplier / (retryBuffer + i) + arbitraryConstant;
