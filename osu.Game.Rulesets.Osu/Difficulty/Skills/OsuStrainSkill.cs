@@ -43,6 +43,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double arbitraryMultiplier = -1.15;
             double breakEvenPoint = 60;
             double arbitraryConstant = -arbitraryMultiplier / (retryBuffer + breakEvenPoint / (strainLength / 1000)) + 1; // Buffs anything after 1 minute's worth of strains
+
             for (int i = 0; i < peaks.Count; i++)
             {
                 peaks[i] *= arbitraryMultiplier / (retryBuffer + i) + arbitraryConstant;
