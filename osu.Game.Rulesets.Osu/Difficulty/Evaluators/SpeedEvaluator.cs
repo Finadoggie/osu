@@ -65,7 +65,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             if (mods.OfType<OsuModHidden>().Any(/* m => !m.OnlyFadeApproachCircles.Value */) || mods.OfType<OsuModTraceable>().Any())
             {
-                double hdBonus = 1 + 0.0008 * (-150 + osuCurrObj.TimePreempt);
+                double hdBonus = 1 + 0.0008 * (-150 + osuCurrObj.TimePreempt) * Math.Clamp((osuCurrObj.Angle ?? 0) - 1, 0, 1);
                 distanceBonus *= hdBonus;
             }
 
