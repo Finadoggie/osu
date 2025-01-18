@@ -175,10 +175,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double hdBonus = 1;
             if (mods.OfType<OsuModHidden>().Any(/* m => !m.OnlyFadeApproachCircles.Value */) || mods.OfType<OsuModTraceable>().Any())
             {
-                hdBonus = 1 + 0.00015 * (-150 + ((OsuDifficultyHitObject)current).TimePreempt);
+                hdBonus = 1 + 0.0005 * (-150 + ((OsuDifficultyHitObject)current).TimePreempt);
             }
 
-            return Math.Sqrt(4 + rhythmComplexitySum * rhythm_overall_multiplier) / 2.0 * hdBonus; // produces multiplier that can be applied to strain. range [1, infinity) (not really though)
+            return Math.Sqrt(4 + rhythmComplexitySum * rhythm_overall_multiplier * hdBonus) / 2.0; // produces multiplier that can be applied to strain. range [1, infinity) (not really though)
         }
 
         private class Island : IEquatable<Island>
