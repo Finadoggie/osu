@@ -63,6 +63,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (mods.OfType<OsuModAutopilot>().Any())
                 distanceBonus = 0;
 
+            if (mods.OfType<OsuModHidden>().Any() || mods.OfType<OsuModTraceable>().Any())
+            {
+                double hdBonus = 1 + 0.000727 * (-150 + osuCurrObj.TimePreempt);
+                distanceBonus *= hdBonus;
+            }
+
             // Base difficulty with all bonuses
             double difficulty = (1 + speedBonus + distanceBonus) * 1000 / strainTime;
 
