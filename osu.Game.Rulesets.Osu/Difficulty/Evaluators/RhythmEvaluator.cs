@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Utils;
+using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
+using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
@@ -21,7 +23,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// <summary>
         /// Calculates a rhythm multiplier for the difficulty of the tap associated with historic data of the current <see cref="OsuDifficultyHitObject"/>.
         /// </summary>
-        public static double EvaluateDifficultyOf(DifficultyHitObject current)
+        public static double EvaluateDifficultyOf(DifficultyHitObject current, IReadOnlyList<Mod> mods)
         {
             if (current.BaseObject is Spinner)
                 return 0;
@@ -170,7 +172,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 prevObj = currObj;
             }
 
-            return Math.Sqrt(4 + rhythmComplexitySum * rhythm_overall_multiplier) / 2.0; // produces multiplier that can be applied to strain. range [1, infinity) (not really though)
+            double hdBonus = 1;
+            if (mods.OfType<OsuModHidden>().Any(/* m => !m.OnlyFadeApproachCircles.Value */) || mods.OfType<OsuModTraceable>().Any())
+            {
+                hdBonus = 1 + 0.00015 * (-150 + ((OsuDifficultyHitObject)current).TimePreempt);
+            }
+
+            return Math.Sqrt(4 + rhythmComplexitySum * rhythm_overall_multiplier) / 2.0 * hdBonus; // produces multiplier that can be applied to strain. range [1, infinity) (not really though)
         }
 
         private class Island : IEquatable<Island>
