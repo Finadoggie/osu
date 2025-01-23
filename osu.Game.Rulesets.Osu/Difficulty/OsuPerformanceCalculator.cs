@@ -93,7 +93,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             effectiveMissCount = Math.Max(countMiss, effectiveMissCount);
             effectiveMissCount = Math.Min(totalHits, effectiveMissCount);
 
-            double multiplier = PERFORMANCE_BASE_MULTIPLIER;
+            double multiplier = PERFORMANCE_BASE_MULTIPLIER - 0.03;
 
             if (score.Mods.Any(m => m is OsuModNoFail))
                 multiplier *= Math.Max(0.90, 1.0 - 0.02 * effectiveMissCount);
@@ -122,7 +122,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double totalValue =
                 Math.Pow(
-                    Math.Pow(aimValue, 1.1) +
+                    Math.Pow(aimValue / 2, 1.1) +
+                    Math.Pow(aimValue / 2, 1.1) +
                     Math.Pow(speedValue, 1.1) +
                     Math.Pow(accuracyValue, 1.1) +
                     Math.Pow(flashlightValue, 1.1), 1.0 / 1.1

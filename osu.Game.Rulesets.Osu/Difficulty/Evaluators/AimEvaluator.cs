@@ -132,8 +132,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             aimStrain += wiggleBonus * wiggle_multiplier;
 
+            double single_spacing_threshold = OsuDifficultyHitObject.NORMALISED_DIAMETER * 1.25;
+            double travelDistance = osuLastObj?.TravelDistance ?? 0;
+            double distance = travelDistance + osuCurrObj.MinimumJumpDistance;
+
+            // Cap distance at single_spacing_threshold
+            distance = Math.Min(distance, single_spacing_threshold);
+
+            // Max distance bonus is 1 * `distance_multiplier` at single_spacing_threshold
+            double distanceBonus = Math.Pow(distance / single_spacing_threshold, 3.95) * 0.9;
+
             // Add in acute angle bonus or wide angle bonus + velocity change bonus, whichever is larger.
-            aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier + velocityChangeBonus * velocity_change_multiplier);
+            aimStrain += Math.Max((1 + distanceBonus) * 1000 / osuCurrObj.StrainTime / 25, Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier + velocityChangeBonus * velocity_change_multiplier));
 
             // Add in additional slider velocity bonus.
             if (withSliderTravelDistance)
