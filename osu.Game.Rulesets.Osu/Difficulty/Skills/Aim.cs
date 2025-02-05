@@ -38,7 +38,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         protected override double StrainValueAt(DifficultyHitObject current)
         {
             currentStrain *= strainDecay(current.DeltaTime);
-            currentStrain += AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
+
+            if (IncludeSliders)
+            {
+                double strainWithSliders = AimEvaluator.EvaluateDifficultyOf(current, true) * skillMultiplier;
+                double strainWithoutSliders = AimEvaluator.EvaluateDifficultyOf(current, false, true) * skillMultiplier;
+                currentStrain += Math.Max(strainWithSliders, strainWithoutSliders);
+            }
+            else
+            {
+                currentStrain += AimEvaluator.EvaluateDifficultyOf(current, false) * skillMultiplier;
+            }
 
             if (current.BaseObject is Slider)
             {
