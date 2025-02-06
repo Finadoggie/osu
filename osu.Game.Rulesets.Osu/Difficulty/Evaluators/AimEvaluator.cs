@@ -26,7 +26,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// <item><description>and slider difficulty.</description></item>
         /// </list>
         /// </summary>
-        public static double EvaluateDifficultyOf(DifficultyHitObject current, bool withSliderTravelDistance, bool withSliderVelocityBonus = false)
+        public static double EvaluateDifficultyOf(DifficultyHitObject current, bool withSliderVelocityBonus = false, bool withSliderCurrAim = false, bool withSliderPrevAim = false)
         {
             if (current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner)
                 return 0;
@@ -39,10 +39,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             const int diameter = OsuDifficultyHitObject.NORMALISED_DIAMETER;
 
             // Calculate the velocity to the current hitobject, which starts with a base distance / time assuming the last object is a hitcircle.
-            double currVelocity = getVelocity(osuCurrObj, osuLastObj, withSliderTravelDistance);
+            double currVelocity = getVelocity(osuCurrObj, osuLastObj, withSliderCurrAim);
 
             // As above, do the same for the previous hitobject.
-            double prevVelocity = getVelocity(osuLastObj, osuLastLastObj, withSliderTravelDistance);
+            double prevVelocity = getVelocity(osuLastObj, osuLastLastObj, withSliderPrevAim);
 
             double wideAngleBonus = 0;
             double acuteAngleBonus = 0;
@@ -92,8 +92,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (Math.Max(prevVelocity, currVelocity) != 0)
             {
                 // We want to use the average velocity over the whole object when awarding differences, not the individual jump and slider path velocities.
-                prevVelocity = (osuLastObj.LazyJumpDistance + osuLastLastObj.TravelDistance) / osuLastObj.StrainTime;
-                currVelocity = (osuCurrObj.LazyJumpDistance + osuLastObj.TravelDistance) / osuCurrObj.StrainTime;
+                // prevVelocity = (osuLastObj.LazyJumpDistance + osuLastLastObj.TravelDistance) / osuLastObj.StrainTime;
+                // currVelocity = (osuCurrObj.LazyJumpDistance + osuLastObj.TravelDistance) / osuCurrObj.StrainTime;
 
                 // Scale with ratio of difference compared to 0.5 * max dist.
                 double distRatio = Math.Pow(Math.Sin(Math.PI / 2 * Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity)), 2);
@@ -119,7 +119,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier + velocityChangeBonus * velocity_change_multiplier);
 
             // Add in additional slider velocity bonus.
-            if (withSliderTravelDistance || withSliderVelocityBonus)
+            if (withSliderVelocityBonus)
                 aimStrain += sliderBonus * slider_multiplier;
 
             return aimStrain;

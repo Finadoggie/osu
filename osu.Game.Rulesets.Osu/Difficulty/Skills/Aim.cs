@@ -41,13 +41,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             if (IncludeSliders)
             {
-                double strainWithSliders = AimEvaluator.EvaluateDifficultyOf(current, true) * skillMultiplier;
-                double strainWithoutSliders = AimEvaluator.EvaluateDifficultyOf(current, false, true) * skillMultiplier;
-                currentStrain += Math.Max(strainWithSliders, strainWithoutSliders);
+                double withCurrWithPrev = AimEvaluator.EvaluateDifficultyOf(current, true, true, true) * skillMultiplier;
+                double withCurrWithoutPrev = AimEvaluator.EvaluateDifficultyOf(current, true, true, false) * skillMultiplier;
+                double withoutCurrWithPrev = AimEvaluator.EvaluateDifficultyOf(current, true, false, true) * skillMultiplier;
+                double withoutCurrWithoutPrev = AimEvaluator.EvaluateDifficultyOf(current, true, false, false) * skillMultiplier;
+                currentStrain += Math.Max(Math.Max(withCurrWithPrev, withoutCurrWithoutPrev), Math.Max(withCurrWithoutPrev, withoutCurrWithPrev));
             }
             else
             {
-                currentStrain += AimEvaluator.EvaluateDifficultyOf(current, false) * skillMultiplier;
+                currentStrain += AimEvaluator.EvaluateDifficultyOf(current) * skillMultiplier;
             }
 
             if (current.BaseObject is Slider)
