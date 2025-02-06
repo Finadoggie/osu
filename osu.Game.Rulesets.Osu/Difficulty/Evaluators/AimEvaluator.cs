@@ -42,7 +42,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double currVelocity = getVelocity(osuCurrObj, osuLastObj, withSliderTravelDistance);
 
             // As above, do the same for the previous hitobject.
-            double prevVelocity = getVelocity(osuCurrObj, osuLastObj, withSliderTravelDistance);
+            double prevVelocity = getVelocity(osuLastObj, osuLastLastObj, withSliderTravelDistance);
 
             double wideAngleBonus = 0;
             double acuteAngleBonus = 0;
