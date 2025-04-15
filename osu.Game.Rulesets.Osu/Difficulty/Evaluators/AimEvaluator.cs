@@ -11,7 +11,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
     public static class AimEvaluator
     {
         private const double angle_bonus_begin = Math.PI / 3;
-        private const double timing_threshold = 107;
+        private const double timing_threshold_const = 107;
         private const double slider_multiplier = 1.35;
 
         /// <summary>
@@ -28,27 +28,55 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner)
                 return 0;
 
+            double timing_threshold = 107;
+
             var osuCurrObj = (OsuDifficultyHitObject)current;
             var osuLastObj = (OsuDifficultyHitObject)current.Previous(0);
+            var osuLastLastObj = (OsuDifficultyHitObject)current.Previous(1);
+
+            const int radius = OsuDifficultyHitObject.NORMALISED_RADIUS;
+            const int diameter = OsuDifficultyHitObject.NORMALISED_DIAMETER;
+
+            double currVelocityExp = applyDiminishingExp(osuCurrObj.LazyJumpDistance) / osuCurrObj.StrainTime;
+
+            // But if the last object is a slider, then we extend the travel velocity through the slider into the current object.
+            if (osuLastObj.BaseObject is Slider && withSliderTravelDistance)
+            {
+                double travelVelocityExp = applyDiminishingExp(osuLastObj.TravelDistance) / osuLastObj.TravelTime; // calculate the slider velocity from slider head to slider end.
+                double movementVelocityExp = applyDiminishingExp(osuCurrObj.MinimumJumpDistance) / osuCurrObj.MinimumJumpTime; // calculate the movement velocity from slider end to current object
+
+                currVelocityExp = Math.Max(currVelocityExp, movementVelocityExp + travelVelocityExp); // take the larger total combined velocity.
+            }
 
             double result = 0;
+
             if (osuCurrObj.Angle != null && osuCurrObj.Angle.Value > angle_bonus_begin)
             {
                 const double scale = 90;
 
                 double angleBonus = Math.Sqrt(
                     Math.Max(osuLastObj.LazyJumpDistance - scale, 0)
+                    * Math.Max(osuCurrObj.LazyJumpDistance - scale, 0)
                     * Math.Pow(Math.Sin(osuCurrObj.Angle.Value - angle_bonus_begin), 2)
-                    * Math.Max(osuCurrObj.LazyJumpDistance - scale, 0));
+                );
                 result = 1.5 * applyDiminishingExp(Math.Max(0, angleBonus)) / Math.Max(timing_threshold, osuLastObj.StrainTime);
             }
 
             double jumpDistanceExp = applyDiminishingExp(osuCurrObj.LazyJumpDistance);
-            double travelDistanceExp = applyDiminishingExp(osuCurrObj.TravelDistance);
+
+            double sliderBonus = 0;
+
+            if (osuLastObj.BaseObject is Slider && withSliderTravelDistance)
+            {
+                // Reward sliders based on velocity.
+                sliderBonus = applyDiminishingExp(osuLastObj.TravelDistance) / osuLastObj.TravelTime;
+                sliderBonus *= slider_multiplier;
+            }
 
             return Math.Max(
-                result + (jumpDistanceExp + travelDistanceExp + Math.Sqrt(travelDistanceExp * jumpDistanceExp)) / Math.Max(osuCurrObj.StrainTime, timing_threshold),
-                (Math.Sqrt(travelDistanceExp * jumpDistanceExp) + jumpDistanceExp + travelDistanceExp) / osuCurrObj.StrainTime);
+                result + jumpDistanceExp / Math.Max(osuCurrObj.StrainTime, timing_threshold),
+                currVelocityExp
+            ) + sliderBonus;
         }
 
         private static double applyDiminishingExp(double val) => Math.Pow(val, 0.99);
