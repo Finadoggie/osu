@@ -37,15 +37,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             const int radius = OsuDifficultyHitObject.NORMALISED_RADIUS;
             const int diameter = OsuDifficultyHitObject.NORMALISED_DIAMETER;
 
-            double currVelocityExp = applyDiminishingExp(osuCurrObj.LazyJumpDistance) / osuCurrObj.StrainTime;
+            double jumpDistance = osuCurrObj.LazyJumpDistance;
 
             // But if the last object is a slider, then we extend the travel velocity through the slider into the current object.
             if (osuLastObj.BaseObject is Slider && withSliderTravelDistance)
             {
-                double travelVelocityExp = applyDiminishingExp(osuLastObj.TravelDistance) / osuLastObj.TravelTime; // calculate the slider velocity from slider head to slider end.
-                double movementVelocityExp = applyDiminishingExp(osuCurrObj.MinimumJumpDistance) / osuCurrObj.MinimumJumpTime; // calculate the movement velocity from slider end to current object
+                double sliderDistance = osuLastObj.TravelDistance + osuCurrObj.MinimumJumpDistance; // calculate the slider velocity from slider head to slider end.
 
-                currVelocityExp = Math.Max(currVelocityExp, movementVelocityExp + travelVelocityExp); // take the larger total combined velocity.
+                jumpDistance = Math.Max(jumpDistance, sliderDistance);
             }
 
             double result = 0;
@@ -55,14 +54,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 const double scale = 90;
 
                 double angleBonus = Math.Sqrt(
-                    Math.Max(osuLastObj.LazyJumpDistance - scale, 0)
-                    * Math.Max(osuCurrObj.LazyJumpDistance - scale, 0)
+                    Math.Max(jumpDistance - scale, 0)
+                    * Math.Max(jumpDistance - scale, 0)
                     * Math.Pow(Math.Sin(osuCurrObj.Angle.Value - angle_bonus_begin), 2)
                 );
                 result = 1.5 * applyDiminishingExp(Math.Max(0, angleBonus)) / Math.Max(timing_threshold, osuLastObj.StrainTime);
             }
 
-            double jumpDistanceExp = applyDiminishingExp(osuCurrObj.LazyJumpDistance);
+            double jumpDistanceExp = applyDiminishingExp(jumpDistance);
 
             double sliderBonus = 0;
 
@@ -75,7 +74,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             return Math.Max(
                 result + jumpDistanceExp / Math.Max(osuCurrObj.StrainTime, timing_threshold),
-                currVelocityExp
+                jumpDistanceExp / osuCurrObj.StrainTime
             ) + sliderBonus;
         }
 
