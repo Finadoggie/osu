@@ -59,6 +59,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     * Math.Pow(Math.Sin(osuCurrObj.Angle.Value - angle_bonus_begin), 2)
                 );
                 result = 1.5 * applyDiminishingExp(Math.Max(0, angleBonus)) / Math.Max(timing_threshold, osuLastObj.StrainTime);
+                result /= Math.Max(osuCurrObj.StrainTime, osuLastObj.StrainTime) / Math.Min(osuCurrObj.StrainTime, osuLastObj.StrainTime);
             }
 
             double jumpDistanceExp = applyDiminishingExp(jumpDistance);
