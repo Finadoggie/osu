@@ -47,6 +47,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 jumpDistance = Math.Max(jumpDistance, sliderDistance);
             }
 
+            double prevJumpDistance = osuLastObj.LazyJumpDistance;
+
+            // Do the same for the previous object
+            if (osuLastLastObj.BaseObject is Slider && withSliderTravelDistance)
+            {
+                double sliderDistance = osuLastLastObj.TravelDistance + osuLastObj.MinimumJumpDistance; // calculate the slider velocity from slider head to slider end.
+
+                prevJumpDistance = Math.Max(prevJumpDistance, sliderDistance);
+            }
+
             double result = 0;
 
             if (osuCurrObj.Angle != null && osuCurrObj.Angle.Value > angle_bonus_begin)
@@ -55,11 +65,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 double angleBonus = Math.Sqrt(
                     Math.Max(jumpDistance - scale, 0)
-                    * Math.Max(jumpDistance - scale, 0)
+                    * Math.Max(prevJumpDistance - scale, 0)
                     * Math.Pow(Math.Sin(osuCurrObj.Angle.Value - angle_bonus_begin), 2)
                 );
                 result = 1.5 * applyDiminishingExp(Math.Max(0, angleBonus)) / Math.Max(timing_threshold, osuLastObj.StrainTime);
-                result /= Math.Max(osuCurrObj.StrainTime, osuLastObj.StrainTime) / Math.Min(osuCurrObj.StrainTime, osuLastObj.StrainTime);
+                // Nerf if rhythms are not the same
+
+                // double rhythmRatio = Math.Max(osuCurrObj.StrainTime, osuLastObj.StrainTime) / Math.Min(osuCurrObj.StrainTime, osuLastObj.StrainTime);
+                // result /= Math.Pow(rhythmRatio, 0.25);
             }
 
             double jumpDistanceExp = applyDiminishingExp(jumpDistance);
