@@ -35,12 +35,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 return new OsuDifficultyAttributes { Mods = mods };
 
             var aim = skills.OfType<Aim>().Single(a => a.IncludeSliders);
-            double aimRating = Math.Sqrt(aim.DifficultyValue()) * difficulty_multiplier;
+            double aimRating = Math.Pow(aim.DifficultyValue(), 0.65) * difficulty_multiplier;
             double aimDifficultyStrainCount = aim.CountTopWeightedStrains();
             double difficultSliders = aim.GetDifficultSliders();
 
             var aimWithoutSliders = skills.OfType<Aim>().Single(a => !a.IncludeSliders);
-            double aimRatingNoSliders = Math.Sqrt(aimWithoutSliders.DifficultyValue()) * difficulty_multiplier;
+            double aimRatingNoSliders = Math.Pow(aimWithoutSliders.DifficultyValue(), 0.65) * difficulty_multiplier;
             double sliderFactor = aimRating > 0 ? aimRatingNoSliders / aimRating : 1;
 
             var speed = skills.OfType<Speed>().Single();
