@@ -4,6 +4,7 @@
 using System;
 using osu.Game.Rulesets.Mods;
 using System.Linq;
+using osu.Framework.Utils;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
@@ -36,6 +37,34 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             double strainDecayRate = Math.Log(StrainDecayBase) / 1000;
             double sumDecayRate = Math.Log(DecayWeight) / SectionLength;
+
+            double totalTime = 0;
+
+            // Strain length reduction
+            for (int i = 0; i < sortedStrains.Count - 1; i++)
+            {
+                var current = sortedStrains[i];
+                var next = sortedStrains[i + 1];
+                frequency += current.StrainCountChange;
+
+                if (frequency > 0 && current.Strain > 0 && totalTime < ReducedSectionCount * SectionLength)
+                {
+                    totalTime += Math.Log(next.Strain / current.Strain) * (frequency / strainDecayRate);
+
+                    double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)totalTime / (ReducedSectionCount * SectionLength), 0, 1)));
+                    Console.WriteLine($"Strain {i}: Time: {totalTime}, scale: {scale}");
+                    sortedStrains[i] = new StrainValue
+                    {
+                        Strain = current.Strain * Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale),
+                        StrainCountChange = current.StrainCountChange
+                    };
+                }
+            }
+
+            frequency = 0;
+
+            // Resort strains after reducing beginning sections
+            sortedStrains = sortedStrains.OrderByDescending(x => (x.Strain, x.StrainCountChange)).ToList();
 
             for (int i = 0; i < sortedStrains.Count - 1; i++)
             {
