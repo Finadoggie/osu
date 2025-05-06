@@ -40,7 +40,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             double totalTime = 0;
 
-            // Strain length reduction
+            // Peak strain reduction
             for (int i = 0; i < sortedStrains.Count - 1; i++)
             {
                 var current = sortedStrains[i];
