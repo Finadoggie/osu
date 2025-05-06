@@ -16,10 +16,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     /// <summary>
     /// Represents the skill required to press keys with regards to keeping up with the speed at which objects need to be hit.
     /// </summary>
-    public class Speed : OsuStrainSkill
+    public class Speed : OsuContinuousStrainSkill
     {
         private double skillMultiplier => 1.47;
-        private double strainDecayBase => 0.3;
+        protected override double StrainDecayBase => 0.3;
 
         private double currentStrain;
         private double currentRhythm;
@@ -33,9 +33,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
-
-        protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => (currentStrain * currentRhythm) * strainDecay(time - current.Previous(0).StartTime);
+        private double strainDecay(double ms) => Math.Pow(StrainDecayBase, ms / 1000);
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
@@ -54,14 +52,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         public double RelevantNoteCount()
         {
-            if (ObjectStrains.Count == 0)
+            if (Strains.Count == 0)
                 return 0;
 
-            double maxStrain = ObjectStrains.Max();
+            double maxStrain = Strains.MaxBy(s => (s.Strain, s.StrainCountChange)).Strain;
             if (maxStrain == 0)
                 return 0;
 
-            return ObjectStrains.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxStrain * 12.0 - 6.0))));
+            return Strains.Sum(s => 1.0 / (1.0 + Math.Exp(-(s.Strain / maxStrain * 12.0 - 6.0))));
         }
 
         public double CountTopWeightedSliders() => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, DifficultyValue());
