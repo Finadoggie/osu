@@ -39,6 +39,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
+        protected double StrainDecay(double ms) => Math.Pow(StrainDecayBase, ms / 1000);
+
         public override double DifficultyValue()
         {
             double result = 0.0;
@@ -73,7 +75,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         public override void Process(DifficultyHitObject current)
         {
-            Strains.Add(new StrainValue { Strain = currentStrain * Math.Pow(StrainDecayBase, 1e-3 * current.DeltaTime), StrainCountChange = -1 });
+            Strains.Add(new StrainValue { Strain = currentStrain * Math.Pow(StrainDecayBase, current.DeltaTime / 1000), StrainCountChange = -1 });
             currentStrain = StrainValueAt(current);
             Strains.Add(new StrainValue { Strain = currentStrain, StrainCountChange = 1 });
         }
