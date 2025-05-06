@@ -52,7 +52,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                     totalTime += Math.Log(next.Strain / current.Strain) * (frequency / strainDecayRate);
 
                     double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)totalTime / (ReducedSectionCount * SectionLength), 0, 1)));
-                    Console.WriteLine($"Strain {i}: Time: {totalTime}, scale: {scale}");
                     sortedStrains[i] = new StrainValue
                     {
                         Strain = current.Strain * Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale),
