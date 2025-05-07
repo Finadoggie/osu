@@ -73,8 +73,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             countOk = score.Statistics.GetValueOrDefault(HitResult.Ok);
             countMeh = score.Statistics.GetValueOrDefault(HitResult.Meh);
             countMiss = score.Statistics.GetValueOrDefault(HitResult.Miss);
-            countSliderEndsDropped = osuAttributes.SliderCount - score.Statistics.GetValueOrDefault(HitResult.SliderTailHit);
-            countSliderTickMiss = score.Statistics.GetValueOrDefault(HitResult.LargeTickMiss);
+            countSliderEndsDropped = usingClassicSliderAccuracy ? osuAttributes.SliderCount - score.Statistics.GetValueOrDefault(HitResult.SliderTailHit) : 0;
+            countSliderTickMiss = usingClassicSliderAccuracy ? score.Statistics.GetValueOrDefault(HitResult.LargeTickMiss) : 0;
             effectiveMissCount = countMiss;
 
             var difficulty = score.BeatmapInfo!.Difficulty.Clone();
