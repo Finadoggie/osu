@@ -57,7 +57,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (maxStrain == 0)
                 return 0;
 
-            return Strains.Sum(s => 1.0 / (1.0 + Math.Exp(-(s.Strain / maxStrain * 12.0 - 6.0))));
+            return Strains.Sum(s => s.StrainCountChange == 1 ? 1.0 / (1.0 + Math.Exp(-(s.Strain / maxStrain * 12.0 - 6.0))) : 0);
         }
 
         public double CountTopWeightedSliders() => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, DifficultyValue());

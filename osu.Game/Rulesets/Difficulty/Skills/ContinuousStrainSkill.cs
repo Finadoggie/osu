@@ -3,20 +3,19 @@
 
 using System;
 using System.Collections.Generic;
-using osu.Game.Rulesets.Difficulty.Skills;
 using osu.Game.Rulesets.Mods;
 using System.Linq;
 // ReSharper disable once RedundantUsingDirective
 using osu.Framework.Utils;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 
-namespace osu.Game.Rulesets.Osu.Difficulty.Skills
+namespace osu.Game.Rulesets.Difficulty.Skills
 {
     public abstract class ContinuousStrainSkill : Skill
     {
-
         /// <summary>
         /// The final multiplier to be applied to <see cref="DifficultyValue"/> after all other calculations.
+        /// <remarks>Used mainly so <see cref="CountTopWeightedStrains()"/> doesn't break</remarks>
         /// </summary>
         protected virtual double DifficultyMultiplier => 1;
 
@@ -95,7 +94,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 return Strains.Count;
 
             // Use a weighted sum of all strains. Constants are arbitrary and give nice values
-            return Strains.Sum(s => 1.1 / (1 + Math.Exp(-10 * (s.Strain / consistentTopStrain - 0.88))));
+            return Strains.Sum(s => s.StrainCountChange == 1 ? 1.1 / (1 + Math.Exp(-10 * (s.Strain / consistentTopStrain - 0.88))) : 0);
         }
     }
 }

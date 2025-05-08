@@ -5,12 +5,13 @@ using System;
 using osu.Game.Rulesets.Mods;
 using System.Linq;
 using osu.Framework.Utils;
+using osu.Game.Rulesets.Difficulty.Skills;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
     public abstract class OsuContinuousStrainSkill : ContinuousStrainSkill
     {
-        protected override double DifficultyMultiplier => 1;
+        protected override double DifficultyMultiplier => 1.27;
 
         /// <summary>
         /// The number of sections with the highest strains, which the peak strain reductions will apply to.
