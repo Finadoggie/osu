@@ -74,7 +74,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
 
         public override void Process(DifficultyHitObject current)
         {
-            Strains.Add(new StrainValue { Strain = currentStrain * Math.Pow(StrainDecayBase, current.DeltaTime / 1000), StrainCountChange = -1 });
+            Strains.Add(new StrainValue { Strain = currentStrain * StrainDecay(current.DeltaTime), StrainCountChange = -1 });
             currentStrain = StrainValueAt(current);
             Strains.Add(new StrainValue { Strain = currentStrain, StrainCountChange = 1 });
         }
