@@ -75,6 +75,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         public int SliderCount { get; set; }
 
         /// <summary>
+        /// The number of slider ticks and reverse arrows in the beatmap.
+        /// </summary>
+        public int SliderTickCount { get; set; }
+
+        /// <summary>
         /// The number of spinners in the beatmap.
         /// </summary>
         public int SpinnerCount { get; set; }

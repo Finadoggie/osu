@@ -70,6 +70,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             int hitCircleCount = beatmap.HitObjects.Count(h => h is HitCircle);
             int sliderCount = beatmap.HitObjects.Count(h => h is Slider);
+            int sliderTickCount = beatmap.HitObjects.OfType<Slider>().Sum(h => h.NestedHitObjects.Count(n => n is SliderTick or SliderRepeat));
             int spinnerCount = beatmap.HitObjects.Count(h => h is Spinner);
 
             int totalHits = beatmap.HitObjects.Count;
@@ -120,6 +121,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 MaxCombo = beatmap.GetMaxCombo(),
                 HitCircleCount = hitCircleCount,
                 SliderCount = sliderCount,
+                SliderTickCount = sliderTickCount,
                 SpinnerCount = spinnerCount,
             };
 

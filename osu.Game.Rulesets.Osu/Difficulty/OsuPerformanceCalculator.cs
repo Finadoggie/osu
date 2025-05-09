@@ -35,7 +35,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         /// Missed slider ticks that includes missed reverse arrows. Will only be correct on non-classic scores
         /// </summary>
         private int countSliderTickMiss;
+        /// <summary>
+        /// Hit slider ticks that includes hit reverse arrows. Will only be correct on non-classic scores
+        /// </summary>
+        private int countSliderTickHit;
 
+        /// <summary>
+        /// Amount of hit slider tails that don't break combo. Will only be correct on non-classic scores
+        /// </summary>
+        private int countSliderEndsHit;
         /// <summary>
         /// Amount of missed slider tails that don't break combo. Will only be correct on non-classic scores
         /// </summary>
@@ -53,6 +61,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private double overallDifficulty;
         private double approachRate;
 
+        private double betterAccuracyPercentage;
+
         private double? speedDeviation;
 
         public OsuPerformanceCalculator()
@@ -67,15 +77,25 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             usingClassicSliderAccuracy = score.Mods.OfType<OsuModClassic>().Any(m => m.NoSliderHeadAccuracy.Value);
             usingScoreV2 = score.Mods.Any(m => m is ModScoreV2);
 
-            accuracy = score.Accuracy;
             scoreMaxCombo = score.MaxCombo;
             countGreat = score.Statistics.GetValueOrDefault(HitResult.Great);
             countOk = score.Statistics.GetValueOrDefault(HitResult.Ok);
             countMeh = score.Statistics.GetValueOrDefault(HitResult.Meh);
             countMiss = score.Statistics.GetValueOrDefault(HitResult.Miss);
-            countSliderEndsDropped = usingClassicSliderAccuracy ? 0 : osuAttributes.SliderCount - score.Statistics.GetValueOrDefault(HitResult.SliderTailHit);
-            countSliderTickMiss = usingClassicSliderAccuracy ? 0 : score.Statistics.GetValueOrDefault(HitResult.LargeTickMiss);
+            countSliderEndsHit = score.Statistics.GetValueOrDefault(HitResult.SliderTailHit);
+            countSliderEndsDropped = osuAttributes.SliderCount - countSliderEndsHit;
+            countSliderTickMiss = score.Statistics.GetValueOrDefault(HitResult.LargeTickMiss);
+            countSliderTickHit = osuAttributes.SliderTickCount - countSliderTickMiss;
             effectiveMissCount = countMiss;
+
+            if (usingClassicSliderAccuracy)
+            {
+                accuracy = score.Accuracy;
+            }
+            else
+            {
+                accuracy = (countGreat * 6 + countOk * 2 + countMeh + countSliderEndsHit * 3) / (double)(totalHits * 6 + totalSliderEndsHits * 3);
+            }
 
             var difficulty = score.BeatmapInfo!.Difficulty.Clone();
 
@@ -114,7 +134,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 else
                 {
                     // Combine regular misses with tick misses since tick misses break combo as well
-                    effectiveMissCount = countSliderTickMiss + countMiss;
+                    effectiveMissCount = countMiss + countSliderTickMiss / 4.0;
                 }
             }
 
@@ -264,13 +284,22 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 return 0.0;
 
             // This percentage only considers HitCircles of any value - in this part of the calculation we focus on hitting the timing hit window.
-            double betterAccuracyPercentage;
             int amountHitObjectsWithAccuracy = attributes.HitCircleCount;
             if (!usingClassicSliderAccuracy || usingScoreV2)
                 amountHitObjectsWithAccuracy += attributes.SliderCount;
 
             if (amountHitObjectsWithAccuracy > 0)
-                betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0) - countSliderEndsDropped - countSliderTickMiss) * 6 + (countOk + countSliderEndsDropped) * 2 + countMeh) / (double)(amountHitObjectsWithAccuracy * 6);
+            {
+                if (usingClassicSliderAccuracy)
+                {
+                    betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0)) * 6 + countOk * 2 + countMeh) / (double)(amountHitObjectsWithAccuracy * 6);
+                }
+                else
+                {
+                    betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0) - countSliderEndsDropped) * 6 + (countOk + countSliderEndsDropped) * 2 + countMeh)
+                                               / (double)(amountHitObjectsWithAccuracy * 6);
+                }
+            }
             else
                 betterAccuracyPercentage = 0;
 
@@ -423,5 +452,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private int totalHits => countGreat + countOk + countMeh + countMiss;
         private int totalSuccessfulHits => countGreat + countOk + countMeh;
         private int totalImperfectHits => countOk + countMeh + countMiss;
+        private int totalSliderTickHits => countSliderTickHit + countSliderTickMiss;
+        private int totalSliderEndsHits => countSliderEndsHit + countSliderEndsDropped;
     }
 }
