@@ -296,7 +296,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 }
                 else
                 {
-                    betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0) - countSliderEndsDropped) * 6 + (countOk + countSliderEndsDropped) * 2 + countMeh)
+                    betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0) - countSliderEndsDropped - countSliderTickMiss) * 6 + (countOk + countSliderEndsDropped + countSliderTickMiss) * 2 + countMeh)
                                                / (double)(amountHitObjectsWithAccuracy * 6);
                 }
             }
