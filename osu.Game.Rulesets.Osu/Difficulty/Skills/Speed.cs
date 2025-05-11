@@ -27,6 +27,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private readonly List<double> sliderStrains = new List<double>();
 
         protected override int ReducedSectionCount => 5;
+        protected override double DecayWeight => 0.875;
+        protected override double DifficultyMultiplier => 1.40;
 
         public Speed(Mod[] mods)
             : base(mods)
