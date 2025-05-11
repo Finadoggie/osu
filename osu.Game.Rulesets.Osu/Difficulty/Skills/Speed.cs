@@ -34,6 +34,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             WithoutStamina = withoutStamina;
         }
 
+        // This is objectively not the correct way to do this
         protected override double StrainDecayBase => Math.Pow(
             Math.Pow(0.14, meanFactor) +
             Math.Pow(0.01, meanFactor) +
