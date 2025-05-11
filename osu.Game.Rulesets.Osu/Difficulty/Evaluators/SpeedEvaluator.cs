@@ -64,7 +64,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 distanceBonus = 0;
 
             // Base difficulty with all bonuses
-            double difficulty = (1 + speedBonus + distanceBonus) * 1000 / strainTime;
+            double difficulty = Math.Pow(
+                Math.Pow(1 + speedBonus, 10) +
+                Math.Pow(1 + distanceBonus, 10) - 1
+                , 1.0 / 10.0
+            ) * 1000 / strainTime;
 
             // Apply penalty if there's doubletappable doubles
             return difficulty * doubletapness;
