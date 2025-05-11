@@ -22,7 +22,6 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         protected virtual double SectionLength => 400;
         protected virtual double DecayWeight => 0.9;
         protected abstract double StrainDecayBase { get; }
-
         private double currentStrain;
 
         protected struct StrainValue
@@ -37,8 +36,6 @@ namespace osu.Game.Rulesets.Difficulty.Skills
             : base(mods)
         {
         }
-
-        protected double StrainDecay(double ms) => Math.Pow(StrainDecayBase, ms / 1000);
 
         public override double DifficultyValue()
         {
@@ -70,11 +67,13 @@ namespace osu.Game.Rulesets.Difficulty.Skills
             return result * DifficultyMultiplier;
         }
 
+        protected virtual double StrainDecay(double ms) => Math.Pow(StrainDecayBase, ms / 1000);
+        protected virtual double CalculateInitialStrain(DifficultyHitObject current) => currentStrain * StrainDecay(current.DeltaTime);
         protected abstract double StrainValueAt(DifficultyHitObject hitObject);
 
         public override void Process(DifficultyHitObject current)
         {
-            Strains.Add(new StrainValue { Strain = currentStrain * StrainDecay(current.DeltaTime), StrainCountChange = -1 });
+            Strains.Add(new StrainValue { Strain = CalculateInitialStrain(current), StrainCountChange = -1 });
             currentStrain = StrainValueAt(current);
             Strains.Add(new StrainValue { Strain = currentStrain, StrainCountChange = 1 });
         }

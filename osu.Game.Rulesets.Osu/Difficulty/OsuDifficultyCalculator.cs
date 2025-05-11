@@ -82,9 +82,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double aimRatingNoSliders = computeAimRating(aimWithoutSliders.DifficultyValue(), mods, totalHits, approachRate, overallDifficulty);
 
             double speedRating = computeSpeedRating(speed.DifficultyValue(), mods, totalHits, approachRate, overallDifficulty);
-            double speedRatingNoStamina = Math.Sqrt(speedWithoutStamina.DifficultyValue()) * difficulty_multiplier;
-
-            double staminaRating = Math.Sqrt(stamina.DifficultyValue()) * difficulty_multiplier;
+            double speedRatingNoStamina = computeSpeedRating(speedWithoutStamina.DifficultyValue(), mods, totalHits, approachRate, overallDifficulty);
+            double staminaRating = computeSpeedRating(stamina.DifficultyValue(), mods, totalHits, approachRate, overallDifficulty);
 
             double flashlightRating = 0.0;
 

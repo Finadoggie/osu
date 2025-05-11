@@ -31,8 +31,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         private readonly List<double> sliderStrains = new List<double>();
 
-        private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
-
         protected override double StrainValueAt(DifficultyHitObject current)
         {
             currentStrain *= StrainDecay(current.DeltaTime);
