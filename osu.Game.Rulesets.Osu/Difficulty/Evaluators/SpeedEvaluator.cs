@@ -19,6 +19,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private const double min_speed_bonus = 200; // 200 BPM 1/4th
         private const double speed_balancing_factor = 40;
         private const double distance_multiplier = 1.0;
+        private static double mean_factor => 10;
 
         /// <summary>
         /// Evaluates the difficulty of tapping the current object, based on:
@@ -64,7 +65,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 distanceBonus = 0;
 
             // Base difficulty with all bonuses
-            double difficulty = (1 + speedBonus + distanceBonus) * 1000 / strainTime;
+            double difficulty = 1 + Math.Pow(
+                Math.Pow(speedBonus, mean_factor) +
+                Math.Pow(distanceBonus, mean_factor), 1 / mean_factor);
+
+            difficulty *= 1000 / strainTime;
 
             // Apply penalty if there's doubletappable doubles
             return difficulty * doubletapness;
