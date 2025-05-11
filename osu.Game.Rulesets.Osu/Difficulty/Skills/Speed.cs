@@ -34,7 +34,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             WithoutStamina = withoutStamina;
         }
 
-        protected override double StrainDecayBase => 0.0;
+        protected override double StrainDecayBase => Math.Pow(
+            Math.Pow(0.14, meanFactor) +
+            Math.Pow(0.01, meanFactor) +
+            Math.Pow(0.05, meanFactor), 1 / meanFactor);
 
         private double strainDecayBurst(double ms) => Math.Pow(0.14, ms / 1000);
         private double strainDecayStream(double ms) => Math.Pow(0.01, Math.Pow(ms / 1000, 1.6));
