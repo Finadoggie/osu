@@ -13,31 +13,76 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     /// <summary>
     /// Represents the skill required to press keys with regards to keeping up with the speed at which objects need to be hit.
     /// </summary>
-    public class Speed : OsuContinuousStrainSkill
+    public class Speed : OsuStrainSkill
     {
-        private double skillMultiplier => 1.46;
-        protected override double StrainDecayBase => 0.3;
+        private double totalMultiplier => 1.0;
+        private double burstMultiplier => 1.91;
+        private double streamMultiplier => 0.165;
+        private double staminaMultiplier => 0.04;
+        private double meanFactor => 1.25;
 
-        private double currentStrain;
+        private double currentBurstStrain;
+        private double currentStreamStrain;
+        private double currentStaminaStrain;
         private double currentRhythm;
 
-        protected override int ReducedSectionCount => 5;
+        public readonly bool WithoutStamina;
 
-        public Speed(Mod[] mods)
+        public Speed(Mod[] mods, bool withoutStamina)
             : base(mods)
         {
+            WithoutStamina = withoutStamina;
+        }
+
+        private double strainDecayBurst(double ms) => Math.Pow(0.14, ms / 1000);
+        private double strainDecayStream(double ms) => Math.Pow(0.01, Math.Pow(ms / 1000, 1.6));
+
+        private double strainDecayStamina(double ms, double staminaValue)
+        {
+            double changeFactor = currentStaminaStrain > 0 ? 1 + Math.Pow(currentStaminaStrain / (staminaValue + currentStaminaStrain), 25) : 1;
+            return Math.Pow(0.05, Math.Pow(ms * changeFactor / 1000, 3.5));
+        }
+
+        protected override double CalculateInitialStrain(double time, DifficultyHitObject current)
+        {
+            if (WithoutStamina)
+                return currentBurstStrain * currentRhythm * strainDecayBurst(time - current.Previous(0).StartTime);
+
+            return Math.Pow(
+                Math.Pow(currentBurstStrain * currentRhythm * strainDecayBurst(time - current.Previous(0).StartTime), meanFactor) +
+                Math.Pow(currentStreamStrain * strainDecayStream(time - current.Previous(0).StartTime), meanFactor) +
+                Math.Pow(currentStaminaStrain * strainDecayStamina(time - current.Previous(0).StartTime, StaminaEvaluator.EvaluateDifficultyOf(current) * staminaMultiplier), meanFactor), 1.0 / meanFactor
+            );
         }
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
             currentStrain *= StrainDecay(((OsuDifficultyHitObject)current).StrainTime);
-            currentStrain += SpeedEvaluator.EvaluateDifficultyOf(current, Mods) * skillMultiplier;
+            currentStrain += SpeedEvaluator.EvaluateDifficultyOf(current, Mods);
 
+            currentBurstStrain *= strainDecayBurst(((OsuDifficultyHitObject)current).StrainTime);
             currentRhythm = RhythmEvaluator.EvaluateDifficultyOf(current);
+            currentBurstStrain += SpeedEvaluator.EvaluateDifficultyOf(current, Mods) * burstMultiplier;
 
-            double totalStrain = currentStrain * currentRhythm;
+            if (WithoutStamina)
+                return currentBurstStrain * currentRhythm;
 
-            return totalStrain;
+            double staminaValue = StaminaEvaluator.EvaluateDifficultyOf(current);
+
+            currentStreamStrain *= strainDecayStream(((OsuDifficultyHitObject)current).StrainTime);
+            currentStreamStrain += staminaValue * streamMultiplier;
+
+            currentStaminaStrain *= strainDecayStamina(((OsuDifficultyHitObject)current).StrainTime, staminaValue * staminaMultiplier);
+            currentStaminaStrain += staminaValue * staminaMultiplier;
+
+            double totalValue =
+                Math.Pow(
+                    Math.Pow(currentBurstStrain * currentRhythm, meanFactor) +
+                    Math.Pow(currentStreamStrain, meanFactor) +
+                    Math.Pow(currentStaminaStrain, meanFactor), 1.0 / meanFactor
+                );
+
+            return totalValue * totalMultiplier;
         }
 
         public double RelevantNoteCount()
