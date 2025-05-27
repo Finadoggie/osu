@@ -1,4 +1,4 @@
-﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
+﻿﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
@@ -7,6 +7,7 @@ using System.Linq;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
+using osu.Game.Rulesets.Osu.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Objects;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
@@ -35,9 +36,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double strainDecayBaseAngle => 0.45;
         private double strainIncreaseRate => 10;
         private double strainDecreaseRate => 3;
-        private double strainInfluence => 1.0 / 1;
+        private double strainInfluence => 6.0 / 1;
 
-        private double angleStrainInfluence => 2.0 / 1;
+        private double angleStrainInfluence => 8.0 / 1;
 
         private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
         private double strainDecayAngle(double ms) => Math.Pow(strainDecayBaseAngle, ms / 1000);
@@ -45,7 +46,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
-            double currentDifficulty = AimEvaluator.EvaluateDistanceDifficultyOf(current, IncludeSliders) * 8.725;
+            double currentDifficulty = AimEvaluator.EvaluateDistanceDifficultyOf(current, IncludeSliders) * 17.025;
             currentAngleStrain *= strainDecayAngle(current.DeltaTime);
             currentAngleStrain += AimEvaluator.EvaluateAngleDifficultyOf(current, IncludeSliders);
 
@@ -71,7 +72,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double hardestPreviousDifficulty = 0;
             double cumulativeDeltaTime = time;
 
-            double timeDecay(double ms) => Math.Pow(strainDecayBase, Math.Pow(ms / 400, 7));
+            double timeDecay(double ms) => Math.Pow(strainDecayBase, Math.Pow(ms / 900, 7));
 
             for (int i = 0; i < previousStrains.Count; i++)
             {
@@ -101,5 +102,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             return sortedStrains.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxSliderStrain * 12.0 - 6.0))));
         }
+
+        public double CountTopWeightedSliders() => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, DifficultyValue());
     }
 }
