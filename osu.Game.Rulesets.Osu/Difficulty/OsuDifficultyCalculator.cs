@@ -320,8 +320,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private static double calculateMechanicalDifficultyRating(double aimDifficultyValue, double speedDifficultyValue)
         {
-            double aimValue = OsuStrainSkill.DifficultyToPerformance(calculateDifficultyRating(aimDifficultyValue));
-            double speedValue = OsuStrainSkill.DifficultyToPerformance(calculateDifficultyRating(speedDifficultyValue));
+            double aimValue = OsuContinuousStrainSkill.DifficultyToPerformance(calculateDifficultyRating(aimDifficultyValue));
+            double speedValue = OsuContinuousStrainSkill.DifficultyToPerformance(calculateDifficultyRating(speedDifficultyValue));
 
             double totalValue = Math.Pow(Math.Pow(aimValue, 1.1) + Math.Pow(speedValue, 1.1), 1 / 1.1);
 
