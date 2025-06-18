@@ -102,7 +102,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             approachRate = preempt > 1200 ? (1800 - preempt) / 120 : (1200 - preempt) / 150 + 5;
 
             sliderFactor = Math.Pow(osuAttributes.SliderFactor, 3); // Cubed to convert from difficulty to performance
-            percentSlidersAsMisses = Interpolation.Lerp(0, 0.2, sliderFactor);
+            percentSlidersAsMisses = usingClassicSliderAccuracy ? 0 : Interpolation.Lerp(0, 0.2, sliderFactor);
 
             double comboBasedEstimatedMissCount = calculateComboBasedEstimatedMissCount(osuAttributes);
             double? scoreBasedEstimatedMissCount = null;
