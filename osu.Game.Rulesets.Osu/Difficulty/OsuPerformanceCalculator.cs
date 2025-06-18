@@ -101,8 +101,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             overallDifficulty = (80 - greatHitWindow) / 6;
             approachRate = preempt > 1200 ? (1800 - preempt) / 120 : (1200 - preempt) / 150 + 5;
 
-            sliderFactor = Math.Pow(osuAttributes.SliderFactor, 3); // Cubed to convert from difficulty to performance
-            percentSlidersAsMisses = usingClassicSliderAccuracy ? 0 : Interpolation.Lerp(0, 0.2, sliderFactor);
+            // SliderFactor is cubed to convert from difficulty to performance
+            percentSlidersAsMisses = usingClassicSliderAccuracy ? 0 : Interpolation.Lerp(0, 0.2, Math.Pow(osuAttributes.SliderFactor, 3));
 
             double comboBasedEstimatedMissCount = calculateComboBasedEstimatedMissCount(osuAttributes);
             double? scoreBasedEstimatedMissCount = null;
@@ -176,11 +176,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (score.Mods.Any(h => h is OsuModAutopilot))
                 return 0.0;
 
-            double aimValue = OsuStrainSkill.DifficultyToPerformance(attributes.AimDifficulty);
-
-            double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
-                                 (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
-            aimValue *= lengthBonus;
+            double aimDifficulty = attributes.AimDifficulty;
 
             if (attributes.SliderCount > 0 && attributes.AimDifficultSliderCount > 0)
             {
@@ -199,9 +195,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                     estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped + countSliderTickMiss * (1 - percentSlidersAsMisses), 0, attributes.AimDifficultSliderCount);
                 }
 
-                double sliderNerfFactor = (1 - sliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + sliderFactor;
-                aimValue *= sliderNerfFactor;
+                double sliderNerfFactor = (1 - attributes.SliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + attributes.SliderFactor;
+                aimDifficulty *= sliderNerfFactor;
             }
+
+            double aimValue = OsuStrainSkill.DifficultyToPerformance(aimDifficulty);
+
+            double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
+                                 (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
+            aimValue *= lengthBonus;
 
             if (effectiveMissCount > 0)
             {
@@ -291,7 +293,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 }
                 else
                 {
-                    betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0) - countSliderTickMiss - countSliderEndsDropped) * 6 + (countOk + countSliderEndsDropped) * 2 + countMeh + countSliderTickMiss) / (double)(amountHitObjectsWithAccuracy * 6);
+                    betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0) - countSliderEndsDropped) * 6 + (countOk + countSliderEndsDropped) * 2 + countMeh) / (double)(amountHitObjectsWithAccuracy * 6);
                 }
             }
             else
