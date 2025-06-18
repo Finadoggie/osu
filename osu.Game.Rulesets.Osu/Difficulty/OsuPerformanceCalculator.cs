@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using osu.Framework.Extensions.IEnumerableExtensions;
+using osu.Framework.Utils;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Mods;
@@ -57,6 +58,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private double aimEstimatedSliderBreaks;
         private double speedEstimatedSliderBreaks;
 
+        private double sliderFactor;
+        private double percentSlidersAsMisses;
+
         public OsuPerformanceCalculator()
             : base(new OsuRuleset())
         {
@@ -96,6 +100,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             overallDifficulty = (80 - greatHitWindow) / 6;
             approachRate = preempt > 1200 ? (1800 - preempt) / 120 : (1200 - preempt) / 150 + 5;
+
+            sliderFactor = Math.Pow(osuAttributes.SliderFactor, 3); // Cubed to convert from difficulty to performance
+            percentSlidersAsMisses = Interpolation.Lerp(0, 0.2, sliderFactor);
 
             double comboBasedEstimatedMissCount = calculateComboBasedEstimatedMissCount(osuAttributes);
             double? scoreBasedEstimatedMissCount = null;
@@ -169,7 +176,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (score.Mods.Any(h => h is OsuModAutopilot))
                 return 0.0;
 
-            double aimDifficulty = attributes.AimDifficulty;
+            double aimValue = OsuStrainSkill.DifficultyToPerformance(attributes.AimDifficulty);
+
+            double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
+                                 (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
+            aimValue *= lengthBonus;
 
             if (attributes.SliderCount > 0 && attributes.AimDifficultSliderCount > 0)
             {
@@ -185,18 +196,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 {
                     // We add tick misses here since they too mean that the player didn't follow the slider properly
                     // We however aren't adding misses here because missing slider heads has a harsh penalty by itself and doesn't mean that the rest of the slider wasn't followed properly
-                    estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped + countSliderTickMiss, 0, attributes.AimDifficultSliderCount);
+                    estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped + countSliderTickMiss * (1 - percentSlidersAsMisses), 0, attributes.AimDifficultSliderCount);
                 }
 
-                double sliderNerfFactor = (1 - attributes.SliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + attributes.SliderFactor;
-                aimDifficulty *= sliderNerfFactor;
+                double sliderNerfFactor = (1 - sliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + sliderFactor;
+                aimValue *= sliderNerfFactor;
             }
-
-            double aimValue = OsuStrainSkill.DifficultyToPerformance(aimDifficulty);
-
-            double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
-                                 (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
-            aimValue *= lengthBonus;
 
             if (effectiveMissCount > 0)
             {
@@ -349,13 +354,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             }
             else
             {
-                double fullComboThreshold = attributes.MaxCombo - countSliderEndsDropped;
-
-                if (scoreMaxCombo < fullComboThreshold)
-                    missCount = fullComboThreshold / Math.Max(1.0, scoreMaxCombo);
-
                 // Combine regular misses with tick misses since tick misses break combo as well
-                missCount = Math.Min(missCount, countSliderTickMiss + countMiss);
+                missCount = countMiss + countSliderTickMiss * percentSlidersAsMisses;
             }
 
             return missCount;
