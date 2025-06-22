@@ -181,7 +181,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (mods.Any(m => m is OsuModAutopilot))
                 return 0;
 
-            double aimRating = calculateDifficultyRating(aimDifficultyValue);
+            double aimRating = Math.Pow(aimDifficultyValue, 0.6) * difficulty_multiplier;
 
             if (mods.Any(m => m is OsuModTouchDevice))
                 aimRating = Math.Pow(aimRating, 0.8);
