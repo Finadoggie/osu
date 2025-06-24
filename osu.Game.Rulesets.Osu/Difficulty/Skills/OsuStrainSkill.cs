@@ -37,13 +37,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             // These sections will not contribute to the difficulty.
             var peaks = GetCurrentStrainPeaks().Where(p => p > 0);
 
-            List<double> strains = peaks.OrderDescending().ToList();
+            List<double> strains = peaks.ToList();
 
-            // We are reducing the highest strains first to account for extreme difficulty spikes
-            for (int i = 0; i < Math.Min(strains.Count, ReducedSectionCount); i++)
+            // Nerf strains based on how hard everything before the strain is
+            double amountNerfed = 0;
+
+            for (int i = 0; i < strains.Count; i++)
             {
-                double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)i / ReducedSectionCount, 0, 1)));
-                strains[i] *= Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale);
+                double amountToNerf = Math.Max(0, Interpolation.Lerp(0, Math.Pow(strains[i], 3.0 / 2.0) - amountNerfed, 1 - ReducedStrainBaseline));
+                strains[i] -= Math.Pow(amountToNerf, 2.0 / 3.0);
+                amountNerfed += amountToNerf;
             }
 
             // Difficulty is the weighted sum of the highest strains from every section.
