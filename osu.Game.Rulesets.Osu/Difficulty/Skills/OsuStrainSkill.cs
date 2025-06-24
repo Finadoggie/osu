@@ -21,7 +21,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         /// <summary>
         /// The baseline multiplier applied to the section with the biggest strain.
         /// </summary>
-        protected virtual double ReducedStrainBaseline => 0.75;
+        protected virtual double ReducedStrainBaseline => 0.80;
 
         protected OsuStrainSkill(Mod[] mods)
             : base(mods)
