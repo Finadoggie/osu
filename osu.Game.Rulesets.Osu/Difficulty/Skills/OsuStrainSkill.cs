@@ -57,7 +57,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 weight *= DecayWeight;
             }
 
-            return difficulty;
+            return difficulty * 1.01;
         }
 
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
