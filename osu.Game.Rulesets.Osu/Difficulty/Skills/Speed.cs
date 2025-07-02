@@ -26,6 +26,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         private readonly List<double> sliderStrains = new List<double>();
 
+        private double aimMultiplier => 1.46 * 1.53;
+        private double aimDecayBase => 0.15;
+        private double currentAim;
+
         protected override int ReducedSectionCount => 5;
 
         public Speed(Mod[] mods)
@@ -34,8 +38,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         }
 
         private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
+        private double aimDecay(double ms) => Math.Pow(aimDecayBase, ms / 1000);
 
-        protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => (currentStrain * currentRhythm) * strainDecay(time - current.Previous(0).StartTime);
+        protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => (currentStrain * strainDecay(time - current.Previous(0).StartTime) + currentAim * aimDecay(time - current.Previous(0).StartTime)) * currentRhythm;
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
@@ -44,7 +49,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             currentRhythm = RhythmEvaluator.EvaluateDifficultyOf(current);
 
-            double totalStrain = currentStrain * currentRhythm;
+            currentAim *= aimDecay(((OsuDifficultyHitObject)current).StrainTime);
+            currentAim += SpeedAimEvaluator.EvaluateDifficultyOf(current, Mods) * aimMultiplier;
+
+            double totalStrain = (currentStrain + currentAim) * currentRhythm;
 
             if (current.BaseObject is Slider)
                 sliderStrains.Add(totalStrain);
