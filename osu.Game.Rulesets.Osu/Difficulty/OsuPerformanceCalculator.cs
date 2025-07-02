@@ -284,8 +284,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 betterAccuracyPercentage = 0;
 
             // It is possible to reach a negative accuracy with this formula. Cap it at zero - zero points.
-            if (betterAccuracyPercentage < 0)
-                betterAccuracyPercentage = 0;
+            // JK get fucked gwb
+            // if (betterAccuracyPercentage < 0)
+            //     betterAccuracyPercentage = 0;
 
             // Lots of arbitrary values from testing.
             // Considering to use derivation from perfect accuracy in a probabilistic manner - assume normal distribution.
