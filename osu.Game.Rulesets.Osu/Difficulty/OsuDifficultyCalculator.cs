@@ -10,6 +10,7 @@ using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Skills;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Osu.Difficulty.Skills;
 using osu.Game.Rulesets.Osu.Difficulty.Utils;
@@ -347,24 +348,63 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             // If the map has less than two OsuHitObjects, the enumerator will not return anything.
             for (int i = 1; i < beatmap.HitObjects.Count; i++)
             {
-                if (beatmap.HitObjects[i] is Slider)
+                if (beatmap.HitObjects[i] is Slider slider)
                 {
+                    double trackingEndTime = Math.Max(
+                        slider.StartTime + slider.Duration + SliderEventGenerator.TAIL_LENIENCY,
+                        slider.StartTime + slider.Duration / 2
+                    );
+
+                    IList<HitObject> nestedObjects = slider.NestedHitObjects;
+
+                    SliderTick? lastRealTick = null;
+
+                    foreach (var hitobject in slider.NestedHitObjects)
+                    {
+                        if (hitobject is SliderTick tick)
+                            lastRealTick = tick;
+                    }
+
+                    if (lastRealTick?.StartTime > trackingEndTime)
+                    {
+                        trackingEndTime = lastRealTick.StartTime;
+
+                        // When the last tick falls after the tracking end time, we need to re-sort the nested objects
+                        // based on time. This creates a somewhat weird ordering which is counter to how a user would
+                        // understand the slider, but allows a zero-diff with known diffcalc output.
+                        //
+                        // To reiterate, this is definitely not correct from a difficulty calculation perspective
+                        // and should be revisited at a later date (likely by replacing this whole code with the commented
+                        // version above).
+                        List<HitObject> reordered = nestedObjects.ToList();
+
+                        reordered.Remove(lastRealTick);
+                        reordered.Add(lastRealTick);
+
+                        nestedObjects = reordered;
+                    }
+
                     // Add slider head as tap object
                     if (objects.Count > 0)
-                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i].NestedHitObjects[0], objects.Last().BaseObject, clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                        objects.Add(new OsuDifficultyHitObject(nestedObjects[0], objects.Last().BaseObject, clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
                     else
-                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i].NestedHitObjects[0], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                        objects.Add(new OsuDifficultyHitObject(nestedObjects[0], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                    tapObjects.Add(objects.Last());
 
                     // tapObjects not included in args since nested objects past head don't require a tap
                     // Includes slider ticks, reverse arrows, and slider tails
-                    for (int j = 1; j < beatmap.HitObjects[i].NestedHitObjects.Count; j++)
+                    for (int j = 1; j < nestedObjects.Count; j++)
                     {
-                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i].NestedHitObjects[j], beatmap.HitObjects[i].NestedHitObjects[j], clockRate, objects, objects.Count));
+                        objects.Add(new OsuDifficultyHitObject(nestedObjects[j], nestedObjects[j - 1], clockRate, objects, objects.Count, parent: slider, nestedIndex: j));
                     }
                 }
                 else
                 {
-                    objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                    if (objects.Count > 0)
+                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i], objects.Last().BaseObject, clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                    else
+                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                    tapObjects.Add(objects.Last());
                 }
             }
 

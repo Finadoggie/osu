@@ -90,26 +90,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Nerf patterns with repeated angles.
             result *= min_angle_multiplier + (1.0 - min_angle_multiplier) / (angleRepeatCount + 1.0);
 
-            double sliderBonus = 0.0;
-
-            if (osuCurrent.BaseObject is Slider osuSlider)
-            {
-                // Invert the scaling factor to determine the true travel distance independent of circle size.
-                double pixelTravelDistance = osuCurrent.LazyTravelDistance / scalingFactor;
-
-                // Reward sliders based on velocity.
-                sliderBonus = Math.Pow(Math.Max(0.0, pixelTravelDistance / osuCurrent.TravelTime - min_velocity), 0.5);
-
-                // Longer sliders require more memorisation.
-                sliderBonus *= pixelTravelDistance;
-
-                // Nerf sliders with repeats, as less memorisation is required.
-                if (osuSlider.RepeatCount > 0)
-                    sliderBonus /= (osuSlider.RepeatCount + 1);
-            }
-
-            result += sliderBonus * slider_multiplier;
-
             return result;
         }
     }

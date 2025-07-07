@@ -7,7 +7,6 @@ using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
-using osu.Game.Rulesets.Osu.Objects;
 using System.Linq;
 using osu.Game.Rulesets.Osu.Difficulty.Utils;
 
@@ -39,8 +38,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
-            if (!((OsuDifficultyHitObject)current).IsTapObject) return 0;
-
             currentStrain *= strainDecay(((OsuDifficultyHitObject)current).StrainTime);
             currentStrain += SpeedEvaluator.EvaluateDifficultyOf(current, Mods) * skillMultiplier;
 
@@ -48,7 +45,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             double totalStrain = currentStrain * currentRhythm;
 
-            if (current.BaseObject is Slider)
+            if (!((OsuDifficultyHitObject)current).IsTapObject)
                 sliderStrains.Add(totalStrain);
 
             return totalStrain;

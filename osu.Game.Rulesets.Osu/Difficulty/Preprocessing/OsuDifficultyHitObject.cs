@@ -24,8 +24,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         public const int MIN_DELTA_TIME = 25;
 
-        private const float maximum_slider_radius = NORMALISED_RADIUS * 2.4f;
-        private const float assumed_slider_radius = NORMALISED_RADIUS * 1.8f;
+        public const float MAXIMUM_SLIDER_RADIUS = NORMALISED_RADIUS * 2.4f;
+        public const float ASSUMED_SLIDER_RADIUS = NORMALISED_RADIUS * 1.8f;
 
         protected new OsuHitObject BaseObject => (OsuHitObject)base.BaseObject;
         protected new OsuHitObject LastObject => (OsuHitObject)base.LastObject;
@@ -69,12 +69,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// <summary>
         /// Normalised distance between the start and end position of this <see cref="OsuDifficultyHitObject"/>.
         /// </summary>
-        public double TravelDistance { get; private set; }
+        public double TravelDistance { get; set; }
 
         /// <summary>
         /// The time taken to travel through <see cref="TravelDistance"/>, with a minimum value of 25ms for <see cref="Slider"/> objects.
         /// </summary>
-        public double TravelTime { get; private set; }
+        public double TravelTime { get; set; }
 
         /// <summary>
         /// The position of the cursor at the point of completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
@@ -131,7 +131,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         private readonly OsuDifficultyHitObject? lastLastDifficultyObject;
         private readonly OsuDifficultyHitObject? lastDifficultyObject;
 
-        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null)
+        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, Slider? parent = null, int? nestedIndex = null)
             : base(hitObject, lastObject, clockRate, objects, index)
         {
             lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)objects[index - 2] : null;
@@ -139,6 +139,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             // Capped to 25ms to prevent difficulty calculation breaking from simultaneous objects.
             StrainTime = Math.Max(DeltaTime, MIN_DELTA_TIME);
+            TapStrainTime = StrainTime;
 
             SmallCircleBonus = Math.Max(1.0, 1.0 + (30 - BaseObject.Radius) / 40);
 
@@ -160,8 +161,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 OsuDifficultyHitObject? lastDifficultyTapObject = tapIndex > 0 ? (OsuDifficultyHitObject)tapObjects[(int)tapIndex - 1] : null;
                 if (lastDifficultyTapObject is not null)
                     TapStrainTime = Math.Max(StartTime - lastDifficultyTapObject.StartTime, MIN_DELTA_TIME);
-                else
-                    TapStrainTime = MIN_DELTA_TIME;
             }
             else
                 IsTapObject = false;
@@ -169,7 +168,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if ((tapObjects is not null && tapIndex is null) || (tapObjects is null && tapIndex is not null))
                 throw new MissingFieldException("tapObjects or tapIndex is not assigned during construction.");
 
-            computeSliderCursorPosition();
+            if (parent is not null && nestedIndex is not null)
+                computeSliderCursorPosition(parent, (int)nestedIndex);
+
             setDistances(clockRate);
         }
 
@@ -222,12 +223,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         private void setDistances(double clockRate)
         {
-            if (BaseObject is Slider currentSlider)
-            {
-                // Bonus for repeat sliders until a better per nested object strain system can be achieved.
-                TravelDistance = LazyTravelDistance * Math.Pow(1 + currentSlider.RepeatCount / 2.5, 1.0 / 2.5);
-                TravelTime = Math.Max(LazyTravelTime / clockRate, MIN_DELTA_TIME);
-            }
+            // if (BaseObject is Slider currentSlider)
+            // {
+            //     // Bonus for repeat sliders until a better per nested object strain system can be achieved.
+            //     TravelDistance = LazyTravelDistance * Math.Pow(1 + currentSlider.RepeatCount / 2.5, 1.0 / 2.5);
+            //     TravelTime = Math.Max(LazyTravelTime / clockRate, MIN_DELTA_TIME);
+            // }
 
             // We don't need to calculate either angle or distance when one of the last->curr objects is a spinner
             if (BaseObject is Spinner || LastObject is Spinner)
@@ -236,16 +237,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             // We will scale distances by this factor, so we can assume a uniform CircleSize among beatmaps.
             float scalingFactor = NORMALISED_RADIUS / (float)BaseObject.Radius;
 
-            Vector2 lastCursorPosition = lastDifficultyObject != null ? getEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
+            Vector2 currCursorPosition = GetEndCursorPosition(this);
+            Vector2 lastCursorPosition = lastDifficultyObject != null ? GetEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
 
-            LazyJumpDistance = (BaseObject.StackedPosition * scalingFactor - lastCursorPosition * scalingFactor).Length;
+            LazyJumpDistance = (currCursorPosition * scalingFactor - lastCursorPosition * scalingFactor).Length;
             MinimumJumpTime = StrainTime;
             MinimumJumpDistance = LazyJumpDistance;
 
-            if (LastObject is Slider lastSlider && lastDifficultyObject != null)
+            if (LastObject is SliderEndCircle lastSliderCircle && lastDifficultyObject != null)
             {
-                double lastTravelTime = Math.Max(lastDifficultyObject.LazyTravelTime / clockRate, MIN_DELTA_TIME);
-                MinimumJumpTime = Math.Max(StrainTime - lastTravelTime, MIN_DELTA_TIME);
+                MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
 
                 //
                 // There are two types of slider-to-object patterns to consider in order to better approximate the real movement a player will take to jump between the hitobjects.
@@ -268,17 +269,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 //
                 // Thus, the player is assumed to jump the minimum of these two distances in all cases.
                 //
-
-                float tailJumpDistance = Vector2.Subtract(lastSlider.TailCircle.StackedPosition, BaseObject.StackedPosition).Length * scalingFactor;
-                MinimumJumpDistance = Math.Max(0, Math.Min(LazyJumpDistance - (maximum_slider_radius - assumed_slider_radius), tailJumpDistance - maximum_slider_radius));
+                float tailJumpDistance = Vector2.Subtract(lastSliderCircle.StackedPosition, currCursorPosition).Length * scalingFactor;
+                MinimumJumpDistance = Math.Max(0, Math.Min(LazyJumpDistance - (MAXIMUM_SLIDER_RADIUS - ASSUMED_SLIDER_RADIUS), tailJumpDistance - MAXIMUM_SLIDER_RADIUS));
             }
 
             if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
             {
-                Vector2 lastLastCursorPosition = getEndCursorPosition(lastLastDifficultyObject);
+                Vector2 lastLastCursorPosition = GetEndCursorPosition(lastLastDifficultyObject);
 
-                Vector2 v1 = lastLastCursorPosition - LastObject.StackedPosition;
-                Vector2 v2 = BaseObject.StackedPosition - lastCursorPosition;
+                Vector2 v1 = lastLastCursorPosition - lastCursorPosition;
+                Vector2 v2 = currCursorPosition - lastCursorPosition;
 
                 float dot = Vector2.Dot(v1, v2);
                 float det = v1.X * v2.Y - v1.Y * v2.X;
@@ -287,11 +287,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
         }
 
-        private void computeSliderCursorPosition()
+        private void computeSliderCursorPosition(Slider slider, int nestedIndex)
         {
-            if (BaseObject is not Slider slider)
-                return;
-
             if (LazyEndPosition != null)
                 return;
 
@@ -347,13 +344,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             else
                 endTimeMin %= 1;
 
-            LazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
+            LazyEndPosition = slider.StackedPosition; // temporary lazy end position until a real result can be derived.
 
             Vector2 currCursorPosition = slider.StackedPosition;
 
             double scalingFactor = NORMALISED_RADIUS / slider.Radius; // lazySliderDistance is coded to be sensitive to scaling, this makes the maths easier with the thresholds being used.
 
-            for (int i = 1; i < nestedObjects.Count; i++)
+            for (int i = 1; i <= nestedIndex; i++)
             {
                 var currMovementObj = (OsuHitObject)nestedObjects[i];
 
@@ -361,7 +358,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 double currMovementLength = scalingFactor * currMovement.Length;
 
                 // Amount of movement required so that the cursor position needs to be updated.
-                double requiredMovement = assumed_slider_radius;
+                double requiredMovement = ASSUMED_SLIDER_RADIUS;
 
                 if (i == nestedObjects.Count - 1)
                 {
@@ -386,16 +383,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 {
                     // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
                     currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovement) / currMovementLength)));
-                    currMovementLength *= (currMovementLength - requiredMovement) / currMovementLength;
-                    LazyTravelDistance += currMovementLength;
-                }
-
-                if (i == nestedObjects.Count - 1)
                     LazyEndPosition = currCursorPosition;
+                }
             }
         }
 
-        private Vector2 getEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
+        public Vector2 GetEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
         {
             return difficultyHitObject.LazyEndPosition ?? difficultyHitObject.BaseObject.StackedPosition;
         }
@@ -403,23 +396,25 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public DifficultyHitObject PreviousTap(int backwardsIndex)
         {
             if (!IsTapObject)
-                throw new InvalidOperationException("Object is not tap object");
+                return default;
+
             if (difficultyTapHitObjects is null || TapIndex is null)
                 throw new NullReferenceException("Object does not contain TapObjects or TapIndex");
 
             int index = (int)TapIndex - (backwardsIndex + 1);
-            return (index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default) ?? throw new InvalidOperationException();
+            return index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default;
         }
 
         public DifficultyHitObject NextTap(int forwardsIndex)
         {
             if (!IsTapObject)
-                throw new InvalidOperationException("Object is not tap object");
+                return default;
+
             if (difficultyTapHitObjects is null || TapIndex is null)
                 throw new InvalidOperationException("Object does not contain TapObjects or TapIndex");
 
             int index = (int)TapIndex + (forwardsIndex + 1);
-            return (index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default) ?? throw new InvalidOperationException();
+            return index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default;
         }
     }
 }
