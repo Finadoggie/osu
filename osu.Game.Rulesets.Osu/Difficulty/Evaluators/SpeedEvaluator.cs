@@ -52,8 +52,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             {
                 // Add additional scaling bonus for streams/bursts higher than 200bpm
                 if (DifficultyCalculationUtils.MillisecondsToBPM(tapStrainTime) > min_speed_bonus)
-                    speedBonus = 1 + 0.75 * Math.Pow((DifficultyCalculationUtils.BPMToMilliseconds(min_speed_bonus) - tapStrainTime) / speed_balancing_factor, 2);
+                    speedBonus = 0.75 * Math.Pow((DifficultyCalculationUtils.BPMToMilliseconds(min_speed_bonus) - tapStrainTime) / speed_balancing_factor, 2);
 
+                speedBonus++;
                 speedBonus *= 1000 / tapStrainTime;
             }
 
