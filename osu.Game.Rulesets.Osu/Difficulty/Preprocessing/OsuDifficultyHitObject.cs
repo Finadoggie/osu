@@ -275,10 +275,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
             {
-                Vector2 lastLastCursorPosition = GetEndCursorPosition(lastLastDifficultyObject);
-
-                Vector2 v1 = lastLastCursorPosition - lastCursorPosition;
-                Vector2 v2 = currCursorPosition - lastCursorPosition;
+                Vector2 v1 = lastLastDifficultyObject.BaseObject.StackedPosition - LastObject.StackedPosition;
+                Vector2 v2 = BaseObject.StackedPosition - LastObject.StackedPosition;
 
                 float dot = Vector2.Dot(v1, v2);
                 float det = v1.X * v2.Y - v1.Y * v2.X;

@@ -23,7 +23,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// </summary>
         public static double EvaluateDifficultyOf(DifficultyHitObject current)
         {
-            return 1;
             if (current.BaseObject is Spinner)
                 return 0;
             if (!((OsuDifficultyHitObject)current).IsTapObject)
