@@ -39,6 +39,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
+            if (!((OsuDifficultyHitObject)current).IsTapObject) return 0;
+
             currentStrain *= strainDecay(((OsuDifficultyHitObject)current).StrainTime);
             currentStrain += SpeedEvaluator.EvaluateDifficultyOf(current, Mods) * skillMultiplier;
 

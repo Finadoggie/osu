@@ -110,10 +110,28 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// </summary>
         public double SmallCircleBonus { get; private set; }
 
+        /// <summary>
+        /// Returns true if the <see cref="DifficultyHitObject"/> requires a tap (is a circle or slider head)
+        /// </summary>
+        public bool IsTapObject { get; private set; }
+
+        /// <summary>
+        /// Milliseconds elapsed since the start time of the previous <see cref="OsuDifficultyHitObject"/> satisfying <see cref="IsTapObject"/>, with a minimum of 25ms.
+        /// </summary>
+        public readonly double TapStrainTime;
+
+        /// <summary>
+        /// The index of this <see cref="DifficultyHitObject"/> in the list of all <see cref="DifficultyHitObject"/>s satisfying <see cref="IsTapObject"/>.
+        /// Is null if this object is not a circle or slider head.
+        /// </summary>
+        public int? TapIndex;
+
+        private readonly IReadOnlyList<DifficultyHitObject>? difficultyTapHitObjects;
+
         private readonly OsuDifficultyHitObject? lastLastDifficultyObject;
         private readonly OsuDifficultyHitObject? lastDifficultyObject;
 
-        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index)
+        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null)
             : base(hitObject, lastObject, clockRate, objects, index)
         {
             lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)objects[index - 2] : null;
@@ -132,6 +150,24 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             {
                 HitWindowGreat = 2 * BaseObject.HitWindows.WindowFor(HitResult.Great) / clockRate;
             }
+
+            if (tapObjects is not null && tapIndex is not null)
+            {
+                difficultyTapHitObjects = tapObjects;
+                TapIndex = tapIndex;
+                IsTapObject = true;
+
+                OsuDifficultyHitObject? lastDifficultyTapObject = tapIndex > 0 ? (OsuDifficultyHitObject)tapObjects[(int)tapIndex - 1] : null;
+                if (lastDifficultyTapObject is not null)
+                    TapStrainTime = Math.Max(StartTime - lastDifficultyTapObject.StartTime, MIN_DELTA_TIME);
+                else
+                    TapStrainTime = MIN_DELTA_TIME;
+            }
+            else
+                IsTapObject = false;
+
+            if ((tapObjects is not null && tapIndex is null) || (tapObjects is null && tapIndex is not null))
+                throw new MissingFieldException("tapObjects or tapIndex is not assigned during construction.");
 
             computeSliderCursorPosition();
             setDistances(clockRate);
@@ -362,6 +398,28 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         private Vector2 getEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
         {
             return difficultyHitObject.LazyEndPosition ?? difficultyHitObject.BaseObject.StackedPosition;
+        }
+
+        public DifficultyHitObject PreviousTap(int backwardsIndex)
+        {
+            if (!IsTapObject)
+                throw new InvalidOperationException("Object is not tap object");
+            if (difficultyTapHitObjects is null || TapIndex is null)
+                throw new NullReferenceException("Object does not contain TapObjects or TapIndex");
+
+            int index = (int)TapIndex - (backwardsIndex + 1);
+            return (index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default) ?? throw new InvalidOperationException();
+        }
+
+        public DifficultyHitObject NextTap(int forwardsIndex)
+        {
+            if (!IsTapObject)
+                throw new InvalidOperationException("Object is not tap object");
+            if (difficultyTapHitObjects is null || TapIndex is null)
+                throw new InvalidOperationException("Object does not contain TapObjects or TapIndex");
+
+            int index = (int)TapIndex + (forwardsIndex + 1);
+            return (index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default) ?? throw new InvalidOperationException();
         }
     }
 }

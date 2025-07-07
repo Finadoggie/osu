@@ -341,12 +341,31 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         protected override IEnumerable<DifficultyHitObject> CreateDifficultyHitObjects(IBeatmap beatmap, double clockRate)
         {
             List<DifficultyHitObject> objects = new List<DifficultyHitObject>();
+            List<DifficultyHitObject> tapObjects = new List<DifficultyHitObject>();
 
             // The first jump is formed by the first two hitobjects of the map.
             // If the map has less than two OsuHitObjects, the enumerator will not return anything.
             for (int i = 1; i < beatmap.HitObjects.Count; i++)
             {
-                objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count));
+                if (beatmap.HitObjects[i] is Slider)
+                {
+                    // Add slider head as tap object
+                    if (objects.Count > 0)
+                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i].NestedHitObjects[0], objects.Last().BaseObject, clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                    else
+                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i].NestedHitObjects[0], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+
+                    // tapObjects not included in args since nested objects past head don't require a tap
+                    // Includes slider ticks, reverse arrows, and slider tails
+                    for (int j = 1; j < beatmap.HitObjects[i].NestedHitObjects.Count; j++)
+                    {
+                        objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i].NestedHitObjects[j], beatmap.HitObjects[i].NestedHitObjects[j], clockRate, objects, objects.Count));
+                    }
+                }
+                else
+                {
+                    objects.Add(new OsuDifficultyHitObject(beatmap.HitObjects[i], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                }
             }
 
             return objects;
