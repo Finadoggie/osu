@@ -142,7 +142,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             TapStrainTime = StrainTime;
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
 
-            SmallCircleBonus = Math.Max(1.0, 1.0 + (30 - BaseObject.Radius) / 40);
+            SmallCircleBonus = Math.Max(1.0, 1.0 + (30 - BaseObject.Radius) / 90);
 
             if (BaseObject is Slider sliderObject)
             {
