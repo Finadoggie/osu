@@ -109,7 +109,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 }
             }
 
-            if (Math.Max(prevVelocity, currVelocity) != 0 && osuLastObj.BaseObject is not SliderEndCircle && osuCurrObj.BaseObject is not SliderEndCircle)
+            if (Math.Max(prevVelocity, currVelocity) != 0)
             {
                 // Scale with ratio of difference compared to 0.5 * max dist.
                 double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity), 0, 1);
