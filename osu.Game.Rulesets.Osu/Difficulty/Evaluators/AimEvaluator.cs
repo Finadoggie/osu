@@ -43,7 +43,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // Calculate the velocity to the current hitobject, which starts with a base distance / time assuming the last object is a hitcircle.
             double currVelocity = osuCurrObj.MinimumJumpDistance / currStrainTime;
-            double currentDT2 = osuCurrObj.LazyJumpDistance / Math.Pow(osuLastObj.StrainTime, 2);
+            double currentDT2 = osuCurrObj.LazyJumpDistance / Math.Pow(prevStrainTime, 2);
 
             // As above, do the same for the previous hitobject.
             double prevVelocity = osuLastObj.MinimumJumpDistance / prevStrainTime;
@@ -63,7 +63,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 // Rewarding angles, take the smaller velocity as base.
                 double angleBonus = Math.Pow(Math.Min(currVelocity, prevVelocity), 1);
 
-                angleBonus /= Math.Pow(Math.Max(osuLastObj.StrainTime, osuCurrObj.StrainTime), 2.6);
+                angleBonus /= Math.Pow(Math.Max(prevStrainTime, currStrainTime), 2.6);
 
                 if (Math.Max(currStrainTime, prevStrainTime) < 1.25 * Math.Min(currStrainTime, prevStrainTime)) // If rhythms are the same.
                 {
@@ -85,7 +85,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 // Apply full wide angle bonus for distance more than one diameter
                 wideAngleBonus *= angleBonus * DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, 0.5, diameter * 2);
-
 
                 // Apply wiggle bonus for jumps that are [radius, 3*diameter] in distance, with < 110 angle
                 // https://www.desmos.com/calculator/dp0v0nvowc
@@ -133,7 +132,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 velocityChangeBonus = overlapVelocityBuff * distRatio;
 
-                velocityChangeBonus /= Math.Pow(Math.Max(osuLastObj.StrainTime, osuCurrObj.StrainTime), 1.6);
+                velocityChangeBonus /= Math.Pow(Math.Max(prevStrainTime, currStrainTime), 1.6);
 
                 // Penalize for rhythm changes.
                 velocityChangeBonus *= Math.Pow(Math.Min(currStrainTime, prevStrainTime) / Math.Max(currStrainTime, prevStrainTime), 2);
