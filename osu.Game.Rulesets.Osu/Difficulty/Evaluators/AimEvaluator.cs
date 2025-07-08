@@ -107,6 +107,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                         wideAngleBonus *= 1 - 0.35 * (1 - distance);
                     }
                 }
+
+                double sliderAcuteBonus = calcAcuteAngleBonus(currAngle);
+
+                sliderAcuteBonus *= angleBonus * DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
+
+                if (osuCurrObj.BaseObject is SliderTick || osuCurrObj.BaseObject is SliderEndCircle)
+                {
+                    aimStrain += sliderAcuteBonus * 5;
+                    acuteAngleBonus = 0;
+                }
             }
 
             if (Math.Max(prevVelocity, currVelocity) != 0)
@@ -134,7 +144,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // Buff if slider
             if (!osuCurrObj.IsTapObject)
-                aimStrain *= 1.7;
+                aimStrain *= 1.2;
 
             return aimStrain;
         }
