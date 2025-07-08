@@ -350,39 +350,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 if (beatmap.HitObjects[i] is Slider slider)
                 {
-                    double trackingEndTime = Math.Max(
-                        slider.StartTime + slider.Duration + SliderEventGenerator.TAIL_LENIENCY,
-                        slider.StartTime + slider.Duration / 2
-                    );
-
                     IList<HitObject> nestedObjects = slider.NestedHitObjects;
-
-                    SliderTick? lastRealTick = null;
-
-                    foreach (var hitobject in slider.NestedHitObjects)
-                    {
-                        if (hitobject is SliderTick tick)
-                            lastRealTick = tick;
-                    }
-
-                    if (lastRealTick?.StartTime > trackingEndTime)
-                    {
-                        trackingEndTime = lastRealTick.StartTime;
-
-                        // When the last tick falls after the tracking end time, we need to re-sort the nested objects
-                        // based on time. This creates a somewhat weird ordering which is counter to how a user would
-                        // understand the slider, but allows a zero-diff with known diffcalc output.
-                        //
-                        // To reiterate, this is definitely not correct from a difficulty calculation perspective
-                        // and should be revisited at a later date (likely by replacing this whole code with the commented
-                        // version above).
-                        List<HitObject> reordered = nestedObjects.ToList();
-
-                        reordered.Remove(lastRealTick);
-                        reordered.Add(lastRealTick);
-
-                        nestedObjects = reordered;
-                    }
 
                     // Add slider head as tap object
                     if (objects.Count > 0)

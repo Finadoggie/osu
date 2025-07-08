@@ -134,8 +134,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, Slider? parent = null, int? nestedIndex = null)
             : base(hitObject, lastObject, clockRate, objects, index)
         {
-            lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)objects[index - 2] : null;
-            lastDifficultyObject = index > 0 ? (OsuDifficultyHitObject)objects[index - 1] : null;
+            lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)Previous(1) : null;
+            lastDifficultyObject = index > 0 ? (OsuDifficultyHitObject)Previous(0) : null;
 
             // Capped to 25ms to prevent difficulty calculation breaking from simultaneous objects.
             StrainTime = Math.Max(DeltaTime, MIN_DELTA_TIME);
@@ -239,9 +239,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             float scalingFactor = NORMALISED_RADIUS / (float)BaseObject.Radius;
 
             Vector2 currCursorPosition = GetEndCursorPosition(this);
-            Vector2 lastCursorPosition = lastDifficultyObject != null ? GetEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
+            Vector2 lastCursorPosition = lastDifficultyObject is not null ? GetEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
 
-            LazyJumpDistance = (currCursorPosition * scalingFactor - lastCursorPosition * scalingFactor).Length;
+            LazyJumpDistance = Vector2.Subtract(currCursorPosition, lastCursorPosition).Length * scalingFactor;
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             MinimumJumpDistance = LazyJumpDistance;
 
@@ -292,50 +292,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if (LazyEndPosition != null)
                 return;
 
-            // TODO: This commented version is actually correct by the new lazer implementation, but intentionally held back from
+            // This commented version is actually correct by the new lazer implementation, but was intentionally held back from
             // difficulty calculator to preserve known behaviour.
-            // double trackingEndTime = Math.Max(
-            //     // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
-            //     slider.Duration + SliderEventGenerator.TAIL_LENIENCY,
-            //     // There's an edge case where one or more ticks/repeats fall within that leniency range.
-            //     // In such a case, the player needs to track until the final tick or repeat.
-            //     slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
-            // );
-
             double trackingEndTime = Math.Max(
-                slider.StartTime + slider.Duration + SliderEventGenerator.TAIL_LENIENCY,
-                slider.StartTime + slider.Duration / 2
+                // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
+                slider.StartTime + slider.Duration - SliderEventGenerator.TAIL_LENIENCY,
+                // There's an edge case where one or more ticks/repeats fall within that leniency range.
+                // In such a case, the player needs to track until the final tick or repeat.
+                slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
             );
 
             IList<HitObject> nestedObjects = slider.NestedHitObjects;
-
-            SliderTick? lastRealTick = null;
-
-            foreach (var hitobject in slider.NestedHitObjects)
-            {
-                if (hitobject is SliderTick tick)
-                    lastRealTick = tick;
-            }
-
-            if (lastRealTick?.StartTime > trackingEndTime)
-            {
-                trackingEndTime = lastRealTick.StartTime;
-
-                // When the last tick falls after the tracking end time, we need to re-sort the nested objects
-                // based on time. This creates a somewhat weird ordering which is counter to how a user would
-                // understand the slider, but allows a zero-diff with known diffcalc output.
-                //
-                // To reiterate, this is definitely not correct from a difficulty calculation perspective
-                // and should be revisited at a later date (likely by replacing this whole code with the commented
-                // version above).
-                List<HitObject> reordered = nestedObjects.ToList();
-
-                reordered.Remove(lastRealTick);
-                reordered.Add(lastRealTick);
-
-                nestedObjects = reordered;
-            }
-
             LazyTravelTime = trackingEndTime - slider.StartTime;
 
             double endTimeMin = LazyTravelTime / slider.SpanDuration;
@@ -344,7 +311,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             else
                 endTimeMin %= 1;
 
-            LazyEndPosition = slider.StackedPosition; // temporary lazy end position until a real result can be derived.
+            LazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
 
             Vector2 currCursorPosition = slider.StackedPosition;
 
@@ -383,7 +350,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 {
                     // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
                     currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovement) / currMovementLength)));
-                    LazyEndPosition = currCursorPosition;
                 }
             }
         }
