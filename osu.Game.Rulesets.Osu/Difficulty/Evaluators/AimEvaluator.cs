@@ -67,7 +67,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     acuteAngleBonus = calcAcuteAngleBonus(currAngle);
 
                     // Pretend this is repetition nerf
-                    acuteAngleBonus *= 0.08;
+                    acuteAngleBonus *= 0.08 + 0.92 * (1 - Math.Min(acuteAngleBonus, Math.Pow(calcAcuteAngleBonus(lastAngle), 3)));
 
                     // Apply acute angle bonus for BPM above 300 1/2 and distance more than one diameter
                     acuteAngleBonus *= angleBonus *
@@ -107,13 +107,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                         wideAngleBonus *= 1 - 0.35 * (1 - distance);
                     }
                 }
-
-                double sliderAcuteBonus = calcAcuteAngleBonus(currAngle);
-
-                sliderAcuteBonus *= angleBonus * DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
-
-                if (osuCurrObj.BaseObject is SliderTick || osuCurrObj.BaseObject is SliderEndCircle)
-                    aimStrain += sliderAcuteBonus * 7;
             }
 
             if (Math.Max(prevVelocity, currVelocity) != 0)
@@ -138,6 +131,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // Apply high circle size bonus
             aimStrain *= osuCurrObj.SmallCircleBonus;
+
+            // Buff if slider
+            if (!osuCurrObj.IsTapObject)
+                aimStrain *= 1.7;
 
             return aimStrain;
         }
