@@ -13,7 +13,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
     {
         private const double wide_angle_multiplier = 1.5;
         private const double acute_angle_multiplier = 0.1;
-        private const double slider_multiplier = 1.35;
         private const double velocity_change_multiplier = 0.75;
         private const double wiggle_multiplier = 1.02;
 
@@ -104,7 +103,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 }
             }
 
-            if (Math.Max(prevVelocity, currVelocity) != 0 && osuLastObj.BaseObject is not SliderEndCircle)
+            if (Math.Max(prevVelocity, currVelocity) != 0 && osuLastObj.BaseObject is not SliderEndCircle && osuCurrObj.BaseObject is not SliderEndCircle)
             {
                 // We want to use the average velocity over the whole object when awarding differences, not the individual jump and slider path velocities.
                 prevVelocity = (osuLastObj.MinimumJumpDistance) / osuLastObj.StrainTime;
