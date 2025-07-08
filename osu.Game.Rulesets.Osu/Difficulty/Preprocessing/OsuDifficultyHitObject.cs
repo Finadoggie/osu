@@ -110,6 +110,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double SmallCircleBonus { get; private set; }
 
         /// <summary>
+        /// Selective bonus for certain types of overlaps.
+        /// </summary>
+        public double? OverlapBonus { get; private set; }
+
+        /// <summary>
         /// Returns true if the <see cref="DifficultyHitObject"/> requires a tap (is a circle or slider head)
         /// </summary>
         public bool IsTapObject { get; private set; }
@@ -401,6 +406,40 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
 
             return (Vector2)difficultyHitObject.LazyEndPosition;
+        }
+
+        public double GetPrecisionBonus()
+        {
+            OsuDifficultyHitObject? nextDifficultyObject = (OsuDifficultyHitObject?)Next(0);
+
+            if (OverlapBonus is null && nextDifficultyObject is not null && nextDifficultyObject.LazyJumpDistance == 0)
+            {
+                // Calculates the overlap of the two circles
+                double r1 = BaseObject.Radius;
+                double r2 = nextDifficultyObject.BaseObject.Radius;
+
+                double totalDistance = (nextDifficultyObject.BaseObject.StackedPosition - BaseObject.StackedPosition).Length;
+
+                // Return early if circles are perfectly stacked
+                if (totalDistance <= 0 || totalDistance > BaseObject.Radius + nextDifficultyObject.BaseObject.Radius)
+                {
+                    OverlapBonus = 0;
+                    return SmallCircleBonus;
+                }
+
+                double d1 = (totalDistance * totalDistance + r1 * r1 - r2 * r2) / (2 * totalDistance);
+                double d2 = (totalDistance * totalDistance + r2 * r2 - r1 * r1) / (2 * totalDistance);
+
+                double calcArea(double r, double d) => r * r * Math.Acos(d / r) - d * Math.Sqrt(r * r - d * d);
+
+                double overlapArea = calcArea(r1, d1) + calcArea(r2, d2);
+
+                // Calculate small circle bonus based on overlap area
+                double fauxRadius = Math.Sqrt(overlapArea / Math.PI);
+                OverlapBonus = Math.Max(1.0, 1.0 + (30 - fauxRadius) / 40);
+            }
+
+            return Math.Max(OverlapBonus ?? 0, SmallCircleBonus);
         }
 
         public DifficultyHitObject PreviousTap(int backwardsIndex)

@@ -69,7 +69,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double distanceBonus = Math.Pow(distance / single_spacing_threshold, 3.95) * distance_multiplier;
 
             // Apply reduced small circle bonus because flow aim difficulty on small circles doesn't scale as hard as jumps
-            distanceBonus *= Math.Sqrt(osuCurrObj.SmallCircleBonus);
+            distanceBonus *= Math.Sqrt(osuCurrObj.GetPrecisionBonus());
 
             // Nerf distance bonus for slider parts
             if (!osuCurrObj.IsTapObject)
