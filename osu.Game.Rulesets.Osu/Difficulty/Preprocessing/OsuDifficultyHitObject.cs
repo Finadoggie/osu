@@ -273,8 +273,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
             {
-                Vector2 v1 = lastLastDifficultyObject.BaseObject.StackedPosition - LastObject.StackedPosition;
-                Vector2 v2 = BaseObject.StackedPosition - LastObject.StackedPosition;
+                // Calculates angle based on cursor positions
+                Vector2 lastLastCursorPosition = GetEndCursorPosition(lastLastDifficultyObject);
+
+                Vector2 v1 = lastLastCursorPosition - lastCursorPosition;
+                Vector2 v2 = currCursorPosition - lastCursorPosition;
+
+                // // Calculates angle based on actual object positions
+                // Vector2 v1 = lastLastDifficultyObject.BaseObject.StackedPosition - LastObject.StackedPosition;
+                // Vector2 v2 = BaseObject.StackedPosition - LastObject.StackedPosition;
 
                 float dot = Vector2.Dot(v1, v2);
                 float det = v1.X * v2.Y - v1.Y * v2.X;
@@ -361,17 +368,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if (difficultyHitObject.LazyEndPosition is not null)
                 return (Vector2)difficultyHitObject.LazyEndPosition;
 
-            /*******************************************************
-             * Everything below is for calculating cursor position *
-             *******************************************************/
+            return CalculateEndCursorPosition(difficultyHitObject);
+        }
 
+        public static Vector2 CalculateEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
+        {
             if (difficultyHitObject.Index == 0)
             {
                 difficultyHitObject.LazyEndPosition = difficultyHitObject.BaseObject.StackedPosition;
                 return (Vector2)difficultyHitObject.LazyEndPosition;
             }
 
-            // Calculates end position based on if cursor has moved enough from previous end position
+            // Calculates end position based on if the cursor has moved enough from previous end position
             double scalingFactor = NORMALISED_RADIUS / difficultyHitObject.BaseObject.Radius;
 
             Vector2 lastCursorPosition = GetEndCursorPosition((OsuDifficultyHitObject)difficultyHitObject.Previous(0));
