@@ -140,6 +140,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             // Capped to 25ms to prevent difficulty calculation breaking from simultaneous objects.
             StrainTime = Math.Max(DeltaTime, MIN_DELTA_TIME);
             TapStrainTime = StrainTime;
+            MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
 
             SmallCircleBonus = Math.Max(1.0, 1.0 + (30 - BaseObject.Radius) / 40);
 
@@ -241,12 +242,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             Vector2 lastCursorPosition = lastDifficultyObject != null ? GetEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
 
             LazyJumpDistance = (currCursorPosition * scalingFactor - lastCursorPosition * scalingFactor).Length;
-            MinimumJumpTime = StrainTime;
+            MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             MinimumJumpDistance = LazyJumpDistance;
 
-            if (LastObject is SliderEndCircle lastSliderCircle && lastDifficultyObject != null)
+            if (LastObject is SliderEndCircle lastSliderCircle)
             {
-                MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
+                // Account for 32ms sliderend leniency
+                MinimumJumpTime = Math.Max(StrainTime + 32, MIN_DELTA_TIME);
 
                 //
                 // There are two types of slider-to-object patterns to consider in order to better approximate the real movement a player will take to jump between the hitobjects.
