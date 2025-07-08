@@ -3,7 +3,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Mods;
@@ -131,7 +130,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         private readonly OsuDifficultyHitObject? lastLastDifficultyObject;
         private readonly OsuDifficultyHitObject? lastDifficultyObject;
 
-        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, Slider? parent = null, int? nestedIndex = null)
+        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null)
             : base(hitObject, lastObject, clockRate, objects, index)
         {
             lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)Previous(1) : null;
@@ -168,9 +167,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if ((tapObjects is not null && tapIndex is null) || (tapObjects is null && tapIndex is not null))
                 throw new MissingFieldException("tapObjects or tapIndex is not assigned during construction.");
-
-            if (parent is not null && nestedIndex is not null)
-                computeSliderCursorPosition(parent, (int)nestedIndex);
 
             setDistances(clockRate);
         }
@@ -287,77 +283,116 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
         }
 
-        private void computeSliderCursorPosition(Slider slider, int nestedIndex)
+        // private void computeCursorPosition(Slider slider, int nestedIndex)
+        // {
+            // if (LazyEndPosition != null)
+            //     return;
+            //
+            // // This commented version is actually correct by the new lazer implementation, but was intentionally held back from
+            // // difficulty calculator to preserve known behaviour.
+            // double trackingEndTime = Math.Max(
+            //     // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
+            //     slider.StartTime + slider.Duration - SliderEventGenerator.TAIL_LENIENCY,
+            //     // There's an edge case where one or more ticks/repeats fall within that leniency range.
+            //     // In such a case, the player needs to track until the final tick or repeat.
+            //     slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
+            // );
+            //
+            // IList<HitObject> nestedObjects = slider.NestedHitObjects;
+            // LazyTravelTime = trackingEndTime - slider.StartTime;
+            //
+            // double endTimeMin = LazyTravelTime / slider.SpanDuration;
+            // if (endTimeMin % 2 >= 1)
+            //     endTimeMin = 1 - endTimeMin % 1;
+            // else
+            //     endTimeMin %= 1;
+            //
+            // LazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
+            //
+            // Vector2 currCursorPosition = slider.StackedPosition;
+            //
+            // double scalingFactor = NORMALISED_RADIUS / slider.Radius; // lazySliderDistance is coded to be sensitive to scaling, this makes the maths easier with the thresholds being used.
+            //
+            // for (int i = 1; i <= nestedIndex; i++)
+            // {
+            //     var currMovementObj = (OsuHitObject)nestedObjects[i];
+            //
+            //     Vector2 currMovement = Vector2.Subtract(currMovementObj.StackedPosition, currCursorPosition);
+            //     double currMovementLength = scalingFactor * currMovement.Length;
+            //
+            //     // Amount of movement required so that the cursor position needs to be updated.
+            //     double requiredMovement = ASSUMED_SLIDER_RADIUS;
+            //
+            //     if (i == nestedObjects.Count - 1)
+            //     {
+            //         // The end of a slider has special aim rules due to the relaxed time constraint on position.
+            //         // There is both a lazy end position as well as the actual end slider position. We assume the player takes the simpler movement.
+            //         // For sliders that are circular, the lazy end position may actually be farther away than the sliders true end.
+            //         // This code is designed to prevent buffing situations where lazy end is actually a less efficient movement.
+            //         Vector2 lazyMovement = Vector2.Subtract(slider.StackedPosition + slider.Path.PositionAt(endTimeMin), currCursorPosition);
+            //
+            //         if (lazyMovement.Length < currMovement.Length)
+            //             currMovement = lazyMovement;
+            //
+            //         currMovementLength = scalingFactor * currMovement.Length;
+            //     }
+            //     else if (currMovementObj is SliderRepeat)
+            //     {
+            //         // For a slider repeat, assume a tighter movement threshold to better assess repeat sliders.
+            //         requiredMovement = NORMALISED_RADIUS;
+            //     }
+            //
+            //     if (currMovementLength > requiredMovement)
+            //     {
+            //         // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
+            //         currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovement) / currMovementLength)));
+            //         LazyEndPosition = currCursorPosition;
+            //     }
+            // }
+        // }
+
+        /// <summary>
+        /// Gets the <see cref="LazyEndPosition"/> if it exists, and calculates it otherwise
+        /// </summary>
+        /// <param name="difficultyHitObject"></param>
+        /// <returns></returns>
+        public static Vector2 GetEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
         {
-            if (LazyEndPosition != null)
-                return;
+            if (difficultyHitObject.LazyEndPosition is not null)
+                return (Vector2)difficultyHitObject.LazyEndPosition;
 
-            // This commented version is actually correct by the new lazer implementation, but was intentionally held back from
-            // difficulty calculator to preserve known behaviour.
-            double trackingEndTime = Math.Max(
-                // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
-                slider.StartTime + slider.Duration - SliderEventGenerator.TAIL_LENIENCY,
-                // There's an edge case where one or more ticks/repeats fall within that leniency range.
-                // In such a case, the player needs to track until the final tick or repeat.
-                slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
-            );
+            /*******************************************************
+             * Everything below is for calculating cursor position *
+             *******************************************************/
 
-            IList<HitObject> nestedObjects = slider.NestedHitObjects;
-            LazyTravelTime = trackingEndTime - slider.StartTime;
-
-            double endTimeMin = LazyTravelTime / slider.SpanDuration;
-            if (endTimeMin % 2 >= 1)
-                endTimeMin = 1 - endTimeMin % 1;
-            else
-                endTimeMin %= 1;
-
-            LazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
-
-            Vector2 currCursorPosition = slider.StackedPosition;
-
-            double scalingFactor = NORMALISED_RADIUS / slider.Radius; // lazySliderDistance is coded to be sensitive to scaling, this makes the maths easier with the thresholds being used.
-
-            for (int i = 1; i <= nestedIndex; i++)
+            if (difficultyHitObject.Index == 0)
             {
-                var currMovementObj = (OsuHitObject)nestedObjects[i];
-
-                Vector2 currMovement = Vector2.Subtract(currMovementObj.StackedPosition, currCursorPosition);
-                double currMovementLength = scalingFactor * currMovement.Length;
-
-                // Amount of movement required so that the cursor position needs to be updated.
-                double requiredMovement = ASSUMED_SLIDER_RADIUS;
-
-                if (i == nestedObjects.Count - 1)
-                {
-                    // The end of a slider has special aim rules due to the relaxed time constraint on position.
-                    // There is both a lazy end position as well as the actual end slider position. We assume the player takes the simpler movement.
-                    // For sliders that are circular, the lazy end position may actually be farther away than the sliders true end.
-                    // This code is designed to prevent buffing situations where lazy end is actually a less efficient movement.
-                    Vector2 lazyMovement = Vector2.Subtract(slider.StackedPosition + slider.Path.PositionAt(endTimeMin), currCursorPosition);
-
-                    if (lazyMovement.Length < currMovement.Length)
-                        currMovement = lazyMovement;
-
-                    currMovementLength = scalingFactor * currMovement.Length;
-                }
-                else if (currMovementObj is SliderRepeat)
-                {
-                    // For a slider repeat, assume a tighter movement threshold to better assess repeat sliders.
-                    requiredMovement = NORMALISED_RADIUS;
-                }
-
-                if (currMovementLength > requiredMovement)
-                {
-                    // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
-                    currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovement) / currMovementLength)));
-                    LazyEndPosition = currCursorPosition;
-                }
+                difficultyHitObject.LazyEndPosition = difficultyHitObject.BaseObject.StackedPosition;
+                return (Vector2)difficultyHitObject.LazyEndPosition;
             }
-        }
 
-        public Vector2 GetEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
-        {
-            return difficultyHitObject.LazyEndPosition ?? difficultyHitObject.BaseObject.StackedPosition;
+            // Calculates end position based on if cursor has moved enough from previous end position
+            double scalingFactor = NORMALISED_RADIUS / difficultyHitObject.BaseObject.Radius;
+
+            Vector2 lastCursorPosition = GetEndCursorPosition((OsuDifficultyHitObject)difficultyHitObject.Previous(0));
+
+            Vector2 currMovement = (difficultyHitObject.BaseObject.StackedPosition - lastCursorPosition);
+            double currMovementLength = currMovement.Length * scalingFactor;
+
+            double requiredMovementLength = difficultyHitObject.IsTapObject ? NORMALISED_RADIUS : ASSUMED_SLIDER_RADIUS;
+
+            if (currMovementLength > requiredMovementLength)
+            {
+                // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
+                Vector2 currCursorPosition = Vector2.Add(lastCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovementLength) / currMovementLength)));
+                difficultyHitObject.LazyEndPosition = currCursorPosition;
+            }
+            else
+            {
+                difficultyHitObject.LazyEndPosition = lastCursorPosition;
+            }
+
+            return (Vector2)difficultyHitObject.LazyEndPosition;
         }
 
         public DifficultyHitObject PreviousTap(int backwardsIndex)

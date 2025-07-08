@@ -363,7 +363,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                     // Includes slider ticks, reverse arrows, and slider tails
                     for (int j = 1; j < nestedObjects.Count; j++)
                     {
-                        objects.Add(new OsuDifficultyHitObject(nestedObjects[j], nestedObjects[j - 1], clockRate, objects, objects.Count, parent: slider, nestedIndex: j));
+                        objects.Add(new OsuDifficultyHitObject(nestedObjects[j], nestedObjects[j - 1], clockRate, objects, objects.Count));
                     }
                 }
                 else
