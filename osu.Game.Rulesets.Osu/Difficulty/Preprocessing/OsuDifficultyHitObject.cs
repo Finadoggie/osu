@@ -192,7 +192,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             // TODO: Fix this later
             if (fadeInDuration == 0)
+            {
                 fadeInDuration = LastObject.TimeFadeIn;
+                BaseObject.TimeFadeIn = LastObject.TimeFadeIn;
+            }
 
             if (hidden)
             {
