@@ -67,14 +67,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double MinimumJumpTime { get; private set; }
 
         /// <summary>
-        /// Normalised distance between the start and end position of this <see cref="OsuDifficultyHitObject"/>.
+        /// The time taken to travel through <see cref="MinimumJumpDistance"/>, with a minimum value of 25ms.
         /// </summary>
-        public double TravelDistance { get; set; }
-
-        /// <summary>
-        /// The time taken to travel through <see cref="TravelDistance"/>, with a minimum value of 25ms for <see cref="Slider"/> objects.
-        /// </summary>
-        public double TravelTime { get; set; }
+        public double? SliderlessJumpDistance { get; private set; }
 
         /// <summary>
         /// The position of the cursor at the point of completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
@@ -84,9 +79,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         /// <summary>
         /// Angle the player has to take to hit this <see cref="OsuDifficultyHitObject"/>.
-        /// Calculated as the angle between the circles (current-2, current-1, current).
+        /// Calculated as something.
         /// </summary>
         public double? Angle { get; private set; }
+
+        /// <summary>
+        /// Angle the player has to take to hit this <see cref="OsuDifficultyHitObject"/>.
+        /// Calculated as the angle between the circles (current-2, current-1, current).
+        /// </summary>
+        public double? SliderlessAngle { get; private set; }
 
         /// <summary>
         /// Retrieves the full hit window for a Great <see cref="HitResult"/>.
@@ -98,15 +99,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// </summary>
         public double SmallCircleBonus { get; private set; }
 
-        /// <summary>
-        /// Area of the intersection between this object and the next, represented in units of Circle Size.
-        /// </summary>
-        public double? OverlapCS { get; private set; }
-
-        /// <summary>
-        /// Selective bonus for certain types of overlaps.
-        /// </summary>
-        public double? OverlapBonus { get; private set; }
+        // /// <summary>
+        // /// Area of the intersection between this object and the next, represented in units of Circle Size.
+        // /// </summary>
+        // public double? OverlapCS { get; private set; }
+        //
+        // /// <summary>
+        // /// Selective bonus for certain types of overlaps.
+        // /// </summary>
+        // public double? OverlapBonus { get; private set; }
 
         /// <summary>
         /// Returns true if the <see cref="DifficultyHitObject"/> requires a tap (is a circle or slider head)
@@ -128,6 +129,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         private readonly OsuDifficultyHitObject? lastLastDifficultyObject;
         private readonly OsuDifficultyHitObject? lastDifficultyObject;
+        private readonly OsuDifficultyHitObject? lastLastTapDifficultyObject;
+        private readonly OsuDifficultyHitObject? lastTapDifficultyObject;
 
         public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, OsuHitObject? parent = null)
             : base(hitObject, lastObject, clockRate, objects, index)
@@ -156,6 +159,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 difficultyTapHitObjects = tapObjects;
                 TapIndex = tapIndex;
                 IsTapObject = true;
+
+                lastLastTapDifficultyObject = tapIndex > 1 ? (OsuDifficultyHitObject)PreviousTap(1) : null;
+                lastTapDifficultyObject = tapIndex > 0 ? (OsuDifficultyHitObject)PreviousTap(0) : null;
 
                 OsuDifficultyHitObject? lastDifficultyTapObject = tapIndex > 0 ? (OsuDifficultyHitObject)tapObjects[(int)tapIndex - 1] : null;
                 if (lastDifficultyTapObject is not null)
@@ -253,6 +259,46 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             LazyJumpDistance = Vector2.Subtract(currCursorPosition, lastCursorPosition).Length * scalingFactor;
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             MinimumJumpDistance = LazyJumpDistance;
+
+            if (lastTapDifficultyObject is not null)
+            {
+                SliderlessJumpDistance = Vector2.Subtract(BaseObject.StackedPosition, lastTapDifficultyObject.BaseObject.StackedPosition).Length * scalingFactor;
+
+                if (lastLastTapDifficultyObject != null && lastLastTapDifficultyObject.BaseObject is not Spinner)
+                {
+                    // // Calculates angle based on actual object positions
+                    Vector2 v1 = lastLastTapDifficultyObject.BaseObject.StackedPosition - lastTapDifficultyObject.BaseObject.StackedPosition;
+                    Vector2 v2 = BaseObject.StackedPosition - lastTapDifficultyObject.BaseObject.StackedPosition;
+
+                    OsuDifficultyHitObject prevObj = lastLastTapDifficultyObject;
+                    OsuDifficultyHitObject prevPrevObj = (OsuDifficultyHitObject)lastLastTapDifficultyObject.PreviousTap(0);
+
+                    // If the current cursor pos is close enough to the previous one
+                    // Ignore the angle from it and recalc the angle from earlier objects
+                    while (v2.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                    {
+                        v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+                        v2 = BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+
+                        if (v2.Length * scalingFactor < 20)
+                        {
+                            prevObj = (OsuDifficultyHitObject)prevObj.PreviousTap(0);
+                            prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.PreviousTap(0);
+                        }
+                    }
+
+                    while (v1.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                    {
+                        v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+                        prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.PreviousTap(0);
+                    }
+
+                    float dot = Vector2.Dot(v1, v2);
+                    float det = v1.X * v2.Y - v1.Y * v2.X;
+
+                    SliderlessAngle = Math.Abs(Math.Atan2(det, dot));
+                }
+            }
 
             if (LastObject is SliderTailCircle lastSliderCircle)
             {
@@ -390,10 +436,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
         }
 
-        public double GetPrecisionBonus()
-        {
-            return Math.Max(OverlapBonus ?? -1, SmallCircleBonus);
-        }
+        // public double GetPrecisionBonus()
+        // {
+        //     return Math.Max(OverlapBonus ?? -1, SmallCircleBonus);
+        // }
 
         // private void calculateOverlapWithNext(OsuDifficultyHitObject nextDifficultyObject)
         // {
