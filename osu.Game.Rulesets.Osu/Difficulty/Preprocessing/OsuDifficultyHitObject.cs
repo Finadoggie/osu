@@ -304,6 +304,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 OsuDifficultyHitObject prevObj = lastLastDifficultyObject;
                 OsuDifficultyHitObject prevPrevObj = (OsuDifficultyHitObject)lastLastDifficultyObject.Previous(0);
 
+                // If the current cursor pos is close enough to the previous one
+                // Ignore the angle from it and recalc the angle from earlier objects
                 while (v2.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
                 {
                     v1 = prevPrevObj.CursorPosition - prevObj.CursorPosition;
