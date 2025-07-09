@@ -133,8 +133,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             TapStrainTime = StrainTime;
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
 
-            SmallCircleBonus = Math.Max(1.0, 1.0 + (30 - BaseObject.Radius) / 40);
-
             if (BaseObject is Slider sliderObject)
             {
                 HitWindowGreat = 2 * sliderObject.HeadCircle.HitWindows.WindowFor(HitResult.Great) / clockRate;
@@ -169,7 +167,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             setDistances(clockRate);
 
-            // lastDifficultyObject?.calculateOverlapWithNext(this);
+            // Use larger radius for small cs bonus if object is slidertick/end
+            double radius = IsTapObject ? BaseObject.Radius : BaseObject.Radius * ASSUMED_SLIDER_RADIUS / NORMALISED_RADIUS;
+            SmallCircleBonus = Math.Max(1.0, 1.0 + (30 - radius) / 40);
         }
 
         public double OpacityAt(double time, bool hidden)
