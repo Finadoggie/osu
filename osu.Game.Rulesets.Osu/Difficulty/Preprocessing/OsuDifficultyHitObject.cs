@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Objects;
+using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
@@ -79,7 +80,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// The position of the cursor at the point of completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
         /// and was hit with as few movements as possible.
         /// </summary>
-        public Vector2? LazyEndPosition { get; private set; }
+        public Vector2 CursorPosition { get; private set; }
 
         /// <summary>
         /// The distance travelled by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
@@ -110,6 +111,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double SmallCircleBonus { get; private set; }
 
         /// <summary>
+        /// Area of the intersection between this object and the next, represented in units of Circle Size.
+        /// </summary>
+        public double? OverlapCS { get; private set; }
+
+        /// <summary>
         /// Selective bonus for certain types of overlaps.
         /// </summary>
         public double? OverlapBonus { get; private set; }
@@ -135,7 +141,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         private readonly OsuDifficultyHitObject? lastLastDifficultyObject;
         private readonly OsuDifficultyHitObject? lastDifficultyObject;
 
-        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null)
+        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, OsuHitObject? parent = null)
             : base(hitObject, lastObject, clockRate, objects, index)
         {
             lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)Previous(1) : null;
@@ -173,7 +179,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if ((tapObjects is not null && tapIndex is null) || (tapObjects is null && tapIndex is not null))
                 throw new MissingFieldException("tapObjects or tapIndex is not assigned during construction.");
 
+            if (parent is Slider slider)
+                calculateCursorPosition(slider);
+            else
+                calculateCursorPosition();
+
             setDistances(clockRate);
+
+            // lastDifficultyObject?.calculateOverlapWithNext(this);
         }
 
         public double OpacityAt(double time, bool hidden)
@@ -239,14 +252,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             // We will scale distances by this factor, so we can assume a uniform CircleSize among beatmaps.
             float scalingFactor = NORMALISED_RADIUS / (float)BaseObject.Radius;
 
-            Vector2 currCursorPosition = GetEndCursorPosition(this);
-            Vector2 lastCursorPosition = lastDifficultyObject is not null ? GetEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
+            Vector2 currCursorPosition = CursorPosition;
+            Vector2 lastCursorPosition = lastDifficultyObject?.CursorPosition ?? LastObject.StackedPosition;
 
             LazyJumpDistance = Vector2.Subtract(currCursorPosition, lastCursorPosition).Length * scalingFactor;
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             MinimumJumpDistance = LazyJumpDistance;
 
-            if (LastObject is SliderEndCircle lastSliderCircle)
+            if (LastObject is SliderTailCircle lastSliderCircle)
             {
                 // Account for 32ms sliderend leniency
                 MinimumJumpTime = Math.Max(StrainTime + 32, MIN_DELTA_TIME);
@@ -278,15 +291,36 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
             {
-                // Calculates angle based on cursor positions
-                Vector2 lastLastCursorPosition = GetEndCursorPosition(lastLastDifficultyObject);
-
-                Vector2 v1 = lastLastCursorPosition - lastCursorPosition;
-                Vector2 v2 = currCursorPosition - lastCursorPosition;
+                // // Calculates angle based on cursor positions
+                // Vector2 lastLastCursorPosition = GetEndCursorPosition(lastLastDifficultyObject);
+                //
+                // Vector2 v1 = lastLastCursorPosition - lastCursorPosition;
+                // Vector2 v2 = currCursorPosition - lastCursorPosition;
 
                 // // Calculates angle based on actual object positions
-                // Vector2 v1 = lastLastDifficultyObject.BaseObject.StackedPosition - LastObject.StackedPosition;
-                // Vector2 v2 = BaseObject.StackedPosition - LastObject.StackedPosition;
+                Vector2 v1 = lastLastDifficultyObject.CursorPosition - lastCursorPosition;
+                Vector2 v2 = currCursorPosition - lastCursorPosition;
+
+                OsuDifficultyHitObject prevObj = lastLastDifficultyObject;
+                OsuDifficultyHitObject prevPrevObj = (OsuDifficultyHitObject)lastLastDifficultyObject.Previous(0);
+
+                while (v2.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                {
+                    v1 = prevPrevObj.CursorPosition - prevObj.CursorPosition;
+                    v2 = currCursorPosition - prevObj.CursorPosition;
+
+                    if (v2.Length * scalingFactor < 20)
+                    {
+                        prevObj = (OsuDifficultyHitObject)prevObj.Previous(0);
+                        prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.Previous(0);
+                    }
+                }
+
+                while (v1.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                {
+                    v1 = prevPrevObj.CursorPosition - prevObj.CursorPosition;
+                    prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.Previous(0);
+                }
 
                 float dot = Vector2.Dot(v1, v2);
                 float det = v1.X * v2.Y - v1.Y * v2.X;
@@ -295,152 +329,101 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
         }
 
-        // private void computeCursorPosition(Slider slider, int nestedIndex)
-        // {
-            // if (LazyEndPosition != null)
-            //     return;
-            //
-            // // This commented version is actually correct by the new lazer implementation, but was intentionally held back from
-            // // difficulty calculator to preserve known behaviour.
-            // double trackingEndTime = Math.Max(
+        private void calculateCursorPosition(Slider? slider = null)
+        {
+            if (Index == 0 || IsTapObject)
+            {
+                CursorPosition = BaseObject.StackedPosition;
+                return;
+            }
+
+            // This was in the previous slider function
+            // Maybe I'll implement it at some point
+            // double trackingTime = Math.Max(
             //     // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
-            //     slider.StartTime + slider.Duration - SliderEventGenerator.TAIL_LENIENCY,
+            //     slider.Duration - SliderEventGenerator.TAIL_LENIENCY,
             //     // There's an edge case where one or more ticks/repeats fall within that leniency range.
             //     // In such a case, the player needs to track until the final tick or repeat.
-            //     slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
+            //     (slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue) - slider.StartTime
             // );
-            //
-            // IList<HitObject> nestedObjects = slider.NestedHitObjects;
-            // LazyTravelTime = trackingEndTime - slider.StartTime;
-            //
-            // double endTimeMin = LazyTravelTime / slider.SpanDuration;
-            // if (endTimeMin % 2 >= 1)
-            //     endTimeMin = 1 - endTimeMin % 1;
-            // else
-            //     endTimeMin %= 1;
-            //
-            // LazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
-            //
-            // Vector2 currCursorPosition = slider.StackedPosition;
-            //
-            // double scalingFactor = NORMALISED_RADIUS / slider.Radius; // lazySliderDistance is coded to be sensitive to scaling, this makes the maths easier with the thresholds being used.
-            //
-            // for (int i = 1; i <= nestedIndex; i++)
-            // {
-            //     var currMovementObj = (OsuHitObject)nestedObjects[i];
-            //
-            //     Vector2 currMovement = Vector2.Subtract(currMovementObj.StackedPosition, currCursorPosition);
-            //     double currMovementLength = scalingFactor * currMovement.Length;
-            //
-            //     // Amount of movement required so that the cursor position needs to be updated.
-            //     double requiredMovement = ASSUMED_SLIDER_RADIUS;
-            //
-            //     if (i == nestedObjects.Count - 1)
-            //     {
-            //         // The end of a slider has special aim rules due to the relaxed time constraint on position.
-            //         // There is both a lazy end position as well as the actual end slider position. We assume the player takes the simpler movement.
-            //         // For sliders that are circular, the lazy end position may actually be farther away than the sliders true end.
-            //         // This code is designed to prevent buffing situations where lazy end is actually a less efficient movement.
-            //         Vector2 lazyMovement = Vector2.Subtract(slider.StackedPosition + slider.Path.PositionAt(endTimeMin), currCursorPosition);
-            //
-            //         if (lazyMovement.Length < currMovement.Length)
-            //             currMovement = lazyMovement;
-            //
-            //         currMovementLength = scalingFactor * currMovement.Length;
-            //     }
-            //     else if (currMovementObj is SliderRepeat)
-            //     {
-            //         // For a slider repeat, assume a tighter movement threshold to better assess repeat sliders.
-            //         requiredMovement = NORMALISED_RADIUS;
-            //     }
-            //
-            //     if (currMovementLength > requiredMovement)
-            //     {
-            //         // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
-            //         currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovement) / currMovementLength)));
-            //         LazyEndPosition = currCursorPosition;
-            //     }
-            // }
-        // }
+            // double trackingTime = slider.Duration - SliderEventGenerator.TAIL_LENIENCY;
 
-        /// <summary>
-        /// Gets the <see cref="LazyEndPosition"/> if it exists, and calculates it otherwise
-        /// </summary>
-        /// <param name="difficultyHitObject"></param>
-        /// <returns></returns>
-        public static Vector2 GetEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
-        {
-            if (difficultyHitObject.LazyEndPosition is not null)
-                return (Vector2)difficultyHitObject.LazyEndPosition;
+            Vector2 nextPosition = BaseObject.StackedPosition;
 
-            return CalculateEndCursorPosition(difficultyHitObject);
-        }
-
-        public static Vector2 CalculateEndCursorPosition(OsuDifficultyHitObject difficultyHitObject)
-        {
-            if (difficultyHitObject.Index == 0)
+            if (BaseObject is SliderTailCircle && slider is not null)
             {
-                difficultyHitObject.LazyEndPosition = difficultyHitObject.BaseObject.StackedPosition;
-                return (Vector2)difficultyHitObject.LazyEndPosition;
+                // I really hope this is the right way to get slider tail position
+                // This basically just gets the point 36ms from the end of the slider, accounting for reverse arrows
+                nextPosition = slider.StackedPosition + slider.Path.PositionAt(slider.SpanCount() % 2 == 1 ? slider.SpanDuration - SliderEventGenerator.TAIL_LENIENCY / slider.SpanDuration : Math.Min(SliderEventGenerator.TAIL_LENIENCY, slider.SpanDuration) / slider.SpanDuration);
             }
 
             // Calculates end position based on if the cursor has moved enough from previous end position
-            double scalingFactor = NORMALISED_RADIUS / difficultyHitObject.BaseObject.Radius;
+            double scalingFactor = NORMALISED_RADIUS / BaseObject.Radius;
 
-            Vector2 lastCursorPosition = GetEndCursorPosition((OsuDifficultyHitObject)difficultyHitObject.Previous(0));
+            Vector2 lastCursorPosition = lastDifficultyObject?.CursorPosition ?? LastObject.StackedPosition;
 
-            Vector2 currMovement = (difficultyHitObject.BaseObject.StackedPosition - lastCursorPosition);
+            Vector2 currMovement = nextPosition - lastCursorPosition;
             double currMovementLength = currMovement.Length * scalingFactor;
 
-            double requiredMovementLength = difficultyHitObject.IsTapObject ? NORMALISED_RADIUS : ASSUMED_SLIDER_RADIUS;
+            double requiredMovementLength = BaseObject is SliderTailCircle or SliderTick ? NORMALISED_RADIUS : ASSUMED_SLIDER_RADIUS;
 
             if (currMovementLength > requiredMovementLength)
             {
                 // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
                 Vector2 currCursorPosition = Vector2.Add(lastCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovementLength) / currMovementLength)));
-                difficultyHitObject.LazyEndPosition = currCursorPosition;
+                CursorPosition = currCursorPosition;
             }
             else
             {
-                difficultyHitObject.LazyEndPosition = lastCursorPosition;
+                CursorPosition = lastCursorPosition;
             }
-
-            return (Vector2)difficultyHitObject.LazyEndPosition;
         }
 
         public double GetPrecisionBonus()
         {
-            OsuDifficultyHitObject? nextDifficultyObject = (OsuDifficultyHitObject?)Next(0);
-
-            if (OverlapBonus is null && nextDifficultyObject is not null && nextDifficultyObject.LazyJumpDistance == 0)
-            {
-                // Calculates the overlap of the two circles
-                double r1 = BaseObject.Radius;
-                double r2 = nextDifficultyObject.BaseObject.Radius;
-
-                double totalDistance = (nextDifficultyObject.BaseObject.StackedPosition - BaseObject.StackedPosition).Length;
-
-                // Return early if circles are perfectly stacked
-                if (totalDistance <= 0 || totalDistance > BaseObject.Radius + nextDifficultyObject.BaseObject.Radius)
-                {
-                    OverlapBonus = 0;
-                    return SmallCircleBonus;
-                }
-
-                double d1 = (totalDistance * totalDistance + r1 * r1 - r2 * r2) / (2 * totalDistance);
-                double d2 = (totalDistance * totalDistance + r2 * r2 - r1 * r1) / (2 * totalDistance);
-
-                double calcArea(double r, double d) => r * r * Math.Acos(d / r) - d * Math.Sqrt(r * r - d * d);
-
-                double overlapArea = calcArea(r1, d1) + calcArea(r2, d2);
-
-                // Calculate small circle bonus based on overlap area
-                double fauxRadius = Math.Sqrt(overlapArea / Math.PI);
-                OverlapBonus = Math.Max(1.0, 1.0 + (30 - fauxRadius) / 40);
-            }
-
-            return Math.Max(OverlapBonus ?? 0, SmallCircleBonus);
+            return Math.Max(OverlapBonus ?? -1, SmallCircleBonus);
         }
+
+        // private void calculateOverlapWithNext(OsuDifficultyHitObject nextDifficultyObject)
+        // {
+        //     // Calculates the overlap area of the current and next circle
+        //     // Then calculates a precision bonus treating that overlap area as a circle with that area
+        //
+        //     double r1 = IsTapObject ? BaseObject.Radius : ASSUMED_SLIDER_RADIUS / (NORMALISED_RADIUS / BaseObject.Radius);
+        //     double r2 = nextDifficultyObject.IsTapObject ? nextDifficultyObject.BaseObject.Radius : ASSUMED_SLIDER_RADIUS / (NORMALISED_RADIUS / nextDifficultyObject.BaseObject.Radius);
+        //
+        //     double totalDistance = (nextDifficultyObject.BaseObject.StackedPosition - BaseObject.StackedPosition).Length;
+        //
+        //     // Return early if circles are perfectly stacked
+        //     if (totalDistance <= Math.Abs(r2 - r1))
+        //     {
+        //         // This calculation is unnecessary, but it is useful in osu-tools
+        //         OverlapCS = Math.PI * Math.Min(r1, r2) * Math.Min(r1, r2);
+        //         OverlapBonus = Math.Max(0.0, 1.0 + ((30 - Math.Min(r1, r2)) / 40));
+        //         return;
+        //     }
+        //
+        //     if (totalDistance > r1 + r2)
+        //     {
+        //         OverlapCS = 12.2;
+        //         OverlapBonus = -1;
+        //         return;
+        //     }
+        //
+        //     double d1 = (totalDistance * totalDistance + r1 * r1 - r2 * r2) / (2 * totalDistance);
+        //     double d2 = (totalDistance * totalDistance + r2 * r2 - r1 * r1) / (2 * totalDistance);
+        //
+        //     double calcArea(double r, double d) => r * r * Math.Acos(d / r) - d * Math.Sqrt(r * r - d * d);
+        //
+        //     double overlapArea = calcArea(r1, d1) + calcArea(r2, d2);
+        //
+        //     // Calculate small circle bonus based on overlap area
+        //     // Scale with angle to ensure only cases where using the overlap is realistic get the bonus
+        //     double fauxRadius = Math.Sqrt((double)overlapArea / Math.PI);
+        //
+        //     OverlapCS = (fauxRadius - 54.4) / -4.48;
+        //     OverlapBonus = Math.Max(0.0, 1.0 + (30 - fauxRadius) / 40 * Math.Pow(0.9, Math.Max(nextDifficultyObject.LazyJumpDistance, 0)));
+        // }
 
         public DifficultyHitObject PreviousTap(int backwardsIndex)
         {

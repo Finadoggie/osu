@@ -30,7 +30,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// </summary>
         public static double EvaluateDifficultyOf(DifficultyHitObject current, IReadOnlyList<Mod> mods)
         {
-            if (current.BaseObject is Spinner)
+            if (current.BaseObject is Spinner || !((OsuDifficultyHitObject)current).IsTapObject)
                 return 0;
 
             // derive strainTime for calculation
@@ -69,11 +69,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double distanceBonus = Math.Pow(distance / single_spacing_threshold, 3.95) * distance_multiplier;
 
             // Apply reduced small circle bonus because flow aim difficulty on small circles doesn't scale as hard as jumps
-            distanceBonus *= Math.Sqrt(osuCurrObj.GetPrecisionBonus());
-
-            // Nerf distance bonus for slider parts
-            if (!osuCurrObj.IsTapObject)
-                distanceBonus *= 1;
+            distanceBonus *= Math.Sqrt(osuCurrObj.SmallCircleBonus);
 
             distanceBonus *= 1000 / strainTime;
 

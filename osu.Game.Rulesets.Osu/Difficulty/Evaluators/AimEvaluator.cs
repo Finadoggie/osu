@@ -108,13 +108,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     }
                 }
 
-                // double sliderAcuteBonus = calcAcuteAngleBonus(currAngle);
-                //
-                // sliderAcuteBonus *= angleBonus * DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
-                //
+                double sliderAcuteBonus = calcAcuteAngleBonus(currAngle);
+
+                sliderAcuteBonus *= angleBonus * DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
+
                 // if (osuCurrObj.BaseObject is SliderTick || osuCurrObj.BaseObject is SliderEndCircle)
                 // {
-                //     aimStrain += sliderAcuteBonus * 1;
+                //     aimStrain += sliderAcuteBonus * 7;
                 //     acuteAngleBonus = 0;
                 // }
             }
@@ -140,7 +140,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
 
             // Apply high circle size bonus
-            aimStrain *= osuCurrObj.GetPrecisionBonus();
+            aimStrain *= osuCurrObj.SmallCircleBonus;
 
             return aimStrain;
         }
