@@ -99,16 +99,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// </summary>
         public double SmallCircleBonus { get; private set; }
 
-        // /// <summary>
-        // /// Area of the intersection between this object and the next, represented in units of Circle Size.
-        // /// </summary>
-        // public double? OverlapCS { get; private set; }
-        //
-        // /// <summary>
-        // /// Selective bonus for certain types of overlaps.
-        // /// </summary>
-        // public double? OverlapBonus { get; private set; }
-
         /// <summary>
         /// Returns true if the <see cref="DifficultyHitObject"/> requires a tap (is a circle or slider head)
         /// </summary>
@@ -238,13 +228,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         private void setDistances(double clockRate)
         {
-            // if (BaseObject is Slider currentSlider)
-            // {
-            //     // Bonus for repeat sliders until a better per nested object strain system can be achieved.
-            //     TravelDistance = LazyTravelDistance * Math.Pow(1 + currentSlider.RepeatCount / 2.5, 1.0 / 2.5);
-            //     TravelTime = Math.Max(LazyTravelTime / clockRate, MIN_DELTA_TIME);
-            // }
-
             // We don't need to calculate either angle or distance when one of the last->curr objects is a spinner
             if (BaseObject is Spinner || LastObject is Spinner)
                 return;
@@ -331,12 +314,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
             {
-                // // Calculates angle based on cursor positions
-                // Vector2 lastLastCursorPosition = GetEndCursorPosition(lastLastDifficultyObject);
-                //
-                // Vector2 v1 = lastLastCursorPosition - lastCursorPosition;
-                // Vector2 v2 = currCursorPosition - lastCursorPosition;
-
                 // // Calculates angle based on actual object positions
                 Vector2 v1 = lastLastDifficultyObject.CursorPosition - lastCursorPosition;
                 Vector2 v2 = currCursorPosition - lastCursorPosition;
@@ -434,52 +411,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 CursorPosition = lastCursorPosition;
             }
         }
-
-        // public double GetPrecisionBonus()
-        // {
-        //     return Math.Max(OverlapBonus ?? -1, SmallCircleBonus);
-        // }
-
-        // private void calculateOverlapWithNext(OsuDifficultyHitObject nextDifficultyObject)
-        // {
-        //     // Calculates the overlap area of the current and next circle
-        //     // Then calculates a precision bonus treating that overlap area as a circle with that area
-        //
-        //     double r1 = IsTapObject ? BaseObject.Radius : ASSUMED_SLIDER_RADIUS / (NORMALISED_RADIUS / BaseObject.Radius);
-        //     double r2 = nextDifficultyObject.IsTapObject ? nextDifficultyObject.BaseObject.Radius : ASSUMED_SLIDER_RADIUS / (NORMALISED_RADIUS / nextDifficultyObject.BaseObject.Radius);
-        //
-        //     double totalDistance = (nextDifficultyObject.BaseObject.StackedPosition - BaseObject.StackedPosition).Length;
-        //
-        //     // Return early if circles are perfectly stacked
-        //     if (totalDistance <= Math.Abs(r2 - r1))
-        //     {
-        //         // This calculation is unnecessary, but it is useful in osu-tools
-        //         OverlapCS = Math.PI * Math.Min(r1, r2) * Math.Min(r1, r2);
-        //         OverlapBonus = Math.Max(0.0, 1.0 + ((30 - Math.Min(r1, r2)) / 40));
-        //         return;
-        //     }
-        //
-        //     if (totalDistance > r1 + r2)
-        //     {
-        //         OverlapCS = 12.2;
-        //         OverlapBonus = -1;
-        //         return;
-        //     }
-        //
-        //     double d1 = (totalDistance * totalDistance + r1 * r1 - r2 * r2) / (2 * totalDistance);
-        //     double d2 = (totalDistance * totalDistance + r2 * r2 - r1 * r1) / (2 * totalDistance);
-        //
-        //     double calcArea(double r, double d) => r * r * Math.Acos(d / r) - d * Math.Sqrt(r * r - d * d);
-        //
-        //     double overlapArea = calcArea(r1, d1) + calcArea(r2, d2);
-        //
-        //     // Calculate small circle bonus based on overlap area
-        //     // Scale with angle to ensure only cases where using the overlap is realistic get the bonus
-        //     double fauxRadius = Math.Sqrt((double)overlapArea / Math.PI);
-        //
-        //     OverlapCS = (fauxRadius - 54.4) / -4.48;
-        //     OverlapBonus = Math.Max(0.0, 1.0 + (30 - fauxRadius) / 40 * Math.Pow(0.9, Math.Max(nextDifficultyObject.LazyJumpDistance, 0)));
-        // }
 
         public DifficultyHitObject PreviousTap(int backwardsIndex)
         {
