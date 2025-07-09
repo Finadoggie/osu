@@ -47,16 +47,26 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             strainTime /= Math.Clamp((strainTime / osuCurrObj.HitWindowGreat) / 0.93, 0.92, 1);
 
             // speedBonus will be 0.0 for BPM < 200
-            double speedBonus;
-
-            // Base tapping difficulty
-            speedBonus = 1.0;
+            double speedBonus = 0.0;
 
             // Add additional scaling bonus for streams/bursts higher than 200bpm
             if (DifficultyCalculationUtils.MillisecondsToBPM(strainTime) > min_speed_bonus)
                 speedBonus += 0.75 * Math.Pow((DifficultyCalculationUtils.BPMToMilliseconds(min_speed_bonus) - strainTime) / speed_balancing_factor, 2);
 
-            double distance = osuCurrObj.SliderlessJumpDistance ?? 0;
+            double distance = osuCurrObj.LazyJumpDistance;
+
+            // Adds slider path to distance for calc
+            // For parity with old speed
+            OsuDifficultyHitObject? osuPrevObj = (OsuDifficultyHitObject?)current.Previous(0);
+
+            if (osuPrevObj is not null)
+            {
+                for (OsuDifficultyHitObject osuSliderPart = (OsuDifficultyHitObject)osuPrevObj.Next(0); !osuSliderPart.IsTapObject; osuSliderPart = (OsuDifficultyHitObject)osuSliderPart.Next(0))
+                {
+                    distance += osuSliderPart.LazyJumpDistance;
+                    Console.WriteLine("test");
+                }
+            }
 
             // Cap distance at single_spacing_threshold
             distance = Math.Min(distance, single_spacing_threshold);
@@ -71,7 +81,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 distanceBonus = 0;
 
             // Base difficulty with all bonuses
-            double difficulty = (speedBonus + distanceBonus) * 1000 / strainTime;
+            double difficulty = (1.0 + speedBonus + distanceBonus) * 1000 / strainTime;
 
             // Apply penalty if there's doubletappable doubles
             return difficulty * doubletapness;

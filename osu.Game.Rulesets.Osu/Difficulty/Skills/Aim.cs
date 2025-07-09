@@ -40,6 +40,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         protected override double StrainValueAt(DifficultyHitObject current)
         {
             currentStrain *= strainDecay(((OsuDifficultyHitObject)current).StrainTime);
+            // This check specifically has to be after strain is already decayed
+            if (!(IncludeSliders || ((OsuDifficultyHitObject)current).IsTapObject))
+                return 0;
 
             currentStrain += AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
 

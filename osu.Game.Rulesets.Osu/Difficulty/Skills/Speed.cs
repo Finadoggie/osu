@@ -40,15 +40,20 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         protected override double StrainValueAt(DifficultyHitObject current)
         {
             currentStrain *= strainDecay(((OsuDifficultyHitObject)current).StrainTime);
+            // This check specifically has to be after strain is already decayed
+            if (!((OsuDifficultyHitObject)current).IsTapObject)
+                return 0;
+
             currentStrain += SpeedEvaluator.EvaluateDifficultyOf(current, Mods) * skillMultiplier;
 
             currentRhythm = RhythmEvaluator.EvaluateDifficultyOf(current);
 
             double totalStrain = currentStrain * currentRhythm;
 
-            if (current.BaseObject is SliderHeadCircle or SliderTick or SliderEndCircle)
+            if (current.BaseObject is SliderHeadCircle)
                 sliderStrains.Add(totalStrain);
 
+            // Console.WriteLine($"{current.Index},{(int)totalStrain}");
             return totalStrain;
         }
 

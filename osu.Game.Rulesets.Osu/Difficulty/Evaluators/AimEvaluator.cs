@@ -27,25 +27,37 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// </summary>
         public static double EvaluateDifficultyOf(DifficultyHitObject current, bool includeSliders)
         {
-            if (current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner || !(((OsuDifficultyHitObject)current).IsTapObject || includeSliders))
+            if (current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner)
                 return 0;
 
             var osuCurrObj = (OsuDifficultyHitObject)current;
-            var osuLastObj = (OsuDifficultyHitObject)current.Previous(0);
-            var osuLastLastObj = (OsuDifficultyHitObject)current.Previous(1);
-            var osuLast2Obj = (OsuDifficultyHitObject)current.Previous(2);
+            var osuLastObj = includeSliders ? (OsuDifficultyHitObject)current.Previous(0) : (OsuDifficultyHitObject)((OsuDifficultyHitObject)current).PreviousTap(0);
+            var osuLastLastObj = includeSliders ? (OsuDifficultyHitObject)current.Previous(1) : (OsuDifficultyHitObject)((OsuDifficultyHitObject)current).PreviousTap(1);
+            var osuLast2Obj = includeSliders ? (OsuDifficultyHitObject)current.Previous(2) : (OsuDifficultyHitObject)((OsuDifficultyHitObject)current).PreviousTap(2);
+
+            if (!(includeSliders || osuCurrObj.IsTapObject || osuCurrObj.PrevTapStrainTime is not null))
+                return 0;
+
+            if (osuCurrObj.PrevMinimumJumpTime is null || osuLastObj is null)
+            {
+                return 0;
+            }
 
             const int radius = OsuDifficultyHitObject.NORMALISED_RADIUS;
             const int diameter = OsuDifficultyHitObject.NORMALISED_DIAMETER;
 
             double currStrainTime = includeSliders ? osuCurrObj.MinimumJumpTime : osuCurrObj.TapStrainTime;
-            double prevStrainTime = includeSliders ? osuLastObj.MinimumJumpTime : osuLastObj.TapStrainTime;
+            double prevStrainTime = includeSliders ? (double)osuCurrObj.PrevMinimumJumpTime! : (double)osuCurrObj.PrevTapStrainTime!;
+            double truePrevStrainTime = includeSliders ? osuLastObj.MinimumJumpTime : osuLastObj.TapStrainTime;
 
             // Calculate the velocity to the current hitobject, which starts with a base distance / time assuming the last object is a hitcircle.
-            double currVelocity = (includeSliders ? osuCurrObj.MinimumJumpDistance : osuCurrObj.SliderlessJumpDistance ?? 0) / currStrainTime;
+            double currVelocity = (includeSliders ? osuCurrObj.LazyJumpDistance : osuCurrObj.SliderlessJumpDistance) / currStrainTime;
 
             // As above, do the same for the previous hitobject.
-            double prevVelocity = (includeSliders ? osuLastObj.MinimumJumpDistance : osuLastObj.SliderlessJumpDistance ?? 0) / prevStrainTime;
+            double prevVelocity = (includeSliders ? osuCurrObj.PrevLazyJumpDistance : osuCurrObj.PrevSliderlessJumpDistance) / prevStrainTime;
+
+            // Used only for velocity change bonus to avoid certain buzz sliders being worth too much
+            double truePrevVelocity = (includeSliders ? osuLastObj.LazyJumpDistance : osuLastObj.SliderlessJumpDistance) / prevStrainTime;
 
             double wideAngleBonus = 0;
             double acuteAngleBonus = 0;
@@ -55,7 +67,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double aimStrain = currVelocity; // Start strain with regular velocity.
 
             double? currAngle = includeSliders ? osuCurrObj.Angle : osuCurrObj.SliderlessAngle;
-            double? lastAngle = includeSliders ? osuLastObj.Angle : osuLastObj.SliderlessAngle;
+            double? lastAngle = includeSliders ? osuCurrObj.PrevAngle : osuCurrObj.PrevSliderlessAngle;
 
             if (currAngle is not null && lastAngle is not null)
             {
@@ -112,18 +124,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 }
             }
 
-            if (Math.Max(prevVelocity, currVelocity) != 0)
+            if (Math.Max(truePrevVelocity, currVelocity) != 0)
             {
                 // Scale with ratio of difference compared to 0.5 * max dist.
-                double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity), 0, 1);
+                double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(truePrevVelocity - currVelocity) / Math.Max(truePrevVelocity, currVelocity), 0, 1);
 
                 // Reward for % distance up to 125 / strainTime for overlaps where velocity is still changing.
-                double overlapVelocityBuff = Math.Min(diameter * 1.25 / Math.Min(currStrainTime, prevStrainTime), Math.Abs(prevVelocity - currVelocity));
+                double overlapVelocityBuff = Math.Min(diameter * 1.25 / Math.Min(currStrainTime, truePrevStrainTime), Math.Abs(truePrevVelocity - currVelocity));
 
                 velocityChangeBonus = overlapVelocityBuff * distRatio;
 
                 // Penalize for rhythm changes.
-                velocityChangeBonus *= Math.Pow(Math.Min(currStrainTime, prevStrainTime) / Math.Max(currStrainTime, prevStrainTime), 2);
+                velocityChangeBonus *= Math.Pow(Math.Min(currStrainTime, truePrevStrainTime) / Math.Max(currStrainTime, truePrevStrainTime), 2);
             }
 
             aimStrain += wiggleBonus * wiggle_multiplier;

@@ -44,32 +44,26 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double LazyJumpDistance { get; private set; }
 
         /// <summary>
-        /// Normalised shortest distance to consider for a jump between the previous <see cref="OsuDifficultyHitObject"/> and this <see cref="OsuDifficultyHitObject"/>.
+        /// Normalised distance from the "lazy" end position of the previous previous <see cref="OsuDifficultyHitObject"/> to the start position of the previous <see cref="OsuDifficultyHitObject"/>.
+        /// <para>
+        /// The "lazy" end position is the position at which the cursor ends up if the previous hitobject is followed with as minimal movement as possible (i.e. on the edge of slider follow circles).
+        /// </para>
         /// </summary>
-        /// <remarks>
-        /// This is bounded from above by <see cref="LazyJumpDistance"/>, and is smaller than the former if a more natural path is able to be taken through the previous <see cref="OsuDifficultyHitObject"/>.
-        /// </remarks>
-        /// <example>
-        /// Suppose a linear slider - circle pattern.
-        /// <br />
-        /// Following the slider lazily (see: <see cref="LazyJumpDistance"/>) will result in underestimating the true end position of the slider as being closer towards the start position.
-        /// As a result, <see cref="LazyJumpDistance"/> overestimates the jump distance because the player is able to take a more natural path by following through the slider to its end,
-        /// such that the jump is felt as only starting from the slider's true end position.
-        /// <br />
-        /// Now consider a slider - circle pattern where the circle is stacked along the path inside the slider.
-        /// In this case, the lazy end position correctly estimates the true end position of the slider and provides the more natural movement path.
-        /// </example>
-        public double MinimumJumpDistance { get; private set; }
+        public double PrevLazyJumpDistance { get; private set; }
 
         /// <summary>
-        /// The time taken to travel through <see cref="MinimumJumpDistance"/>, with a minimum value of 25ms.
+        /// The time taken to travel through <see cref="LazyJumpDistance"/>, with a minimum value of 25ms.
         /// </summary>
         public double MinimumJumpTime { get; private set; }
 
         /// <summary>
-        /// The time taken to travel through <see cref="MinimumJumpDistance"/>, with a minimum value of 25ms.
+        /// The time taken to travel through <see cref="LazyJumpDistance"/>, with a minimum value of 25ms.
         /// </summary>
-        public double? SliderlessJumpDistance { get; private set; }
+        public double? PrevMinimumJumpTime { get; private set; }
+
+        public double SliderlessJumpDistance { get; private set; }
+
+        public double PrevSliderlessJumpDistance { get; private set; }
 
         /// <summary>
         /// The position of the cursor at the point of completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
@@ -85,9 +79,21 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         /// <summary>
         /// Angle the player has to take to hit this <see cref="OsuDifficultyHitObject"/>.
+        /// Calculated as something.
+        /// </summary>
+        public double? PrevAngle { get; private set; }
+
+        /// <summary>
+        /// Angle the player has to take to hit this <see cref="OsuDifficultyHitObject"/>.
         /// Calculated as the angle between the circles (current-2, current-1, current).
         /// </summary>
         public double? SliderlessAngle { get; private set; }
+
+        /// <summary>
+        /// Angle the player has to take to hit this <see cref="OsuDifficultyHitObject"/>.
+        /// Calculated as the angle between the circles (current-2, current-1, current).
+        /// </summary>
+        public double? PrevSliderlessAngle { get; private set; }
 
         /// <summary>
         /// Retrieves the full hit window for a Great <see cref="HitResult"/>.
@@ -107,7 +113,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// <summary>
         /// Milliseconds elapsed since the start time of the previous <see cref="OsuDifficultyHitObject"/> satisfying <see cref="IsTapObject"/>, with a minimum of 25ms.
         /// </summary>
-        public readonly double TapStrainTime;
+        public double TapStrainTime;
+
+        /// <summary>
+        /// Milliseconds elapsed since the start time of the previous <see cref="OsuDifficultyHitObject"/> satisfying <see cref="IsTapObject"/>, with a minimum of 25ms.
+        /// </summary>
+        public double? PrevTapStrainTime;
 
         /// <summary>
         /// The index of this <see cref="DifficultyHitObject"/> in the list of all <see cref="DifficultyHitObject"/>s satisfying <see cref="IsTapObject"/>.
@@ -166,6 +177,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 calculateCursorPosition();
 
             setDistances(clockRate);
+            setTapDistances(clockRate);
 
             // Use larger radius for small cs bonus if object is slidertick/end
             double radius = IsTapObject ? BaseObject.Radius : BaseObject.Radius * ASSUMED_SLIDER_RADIUS / NORMALISED_RADIUS;
@@ -240,111 +252,162 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             LazyJumpDistance = Vector2.Subtract(currCursorPosition, lastCursorPosition).Length * scalingFactor;
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
-            MinimumJumpDistance = LazyJumpDistance;
+            PrevMinimumJumpTime = lastDifficultyObject?.MinimumJumpTime ?? null;
 
-            if (lastTapDifficultyObject is not null)
+            if (LastObject is SliderTailCircle)
             {
-                SliderlessJumpDistance = Vector2.Subtract(BaseObject.StackedPosition, lastTapDifficultyObject.BaseObject.StackedPosition).Length * scalingFactor;
+                MinimumJumpTime -= SliderEventGenerator.TAIL_LENIENCY;
 
-                if (lastLastTapDifficultyObject != null && lastLastTapDifficultyObject.BaseObject is not Spinner)
+                if (lastDifficultyObject is not null)
                 {
-                    // // Calculates angle based on actual object positions
-                    Vector2 v1 = lastLastTapDifficultyObject.BaseObject.StackedPosition - lastTapDifficultyObject.BaseObject.StackedPosition;
-                    Vector2 v2 = BaseObject.StackedPosition - lastTapDifficultyObject.BaseObject.StackedPosition;
+                    float tailJumpDistance = Vector2.Subtract(LastObject.StackedPosition, BaseObject.StackedPosition).Length * scalingFactor;
+                    double minimumJumpDistance = Math.Max(0, Math.Min(LazyJumpDistance - (MAXIMUM_SLIDER_RADIUS - ASSUMED_SLIDER_RADIUS), tailJumpDistance - MAXIMUM_SLIDER_RADIUS));
 
-                    OsuDifficultyHitObject prevObj = lastLastTapDifficultyObject;
-                    OsuDifficultyHitObject prevPrevObj = (OsuDifficultyHitObject)lastLastTapDifficultyObject.PreviousTap(0);
+                    float distanceBetweenStartPositions = (CursorPosition * scalingFactor - lastDifficultyObject.LastObject.StackedPosition * scalingFactor).Length;
 
-                    // If the current cursor pos is close enough to the previous one
-                    // Ignore the angle from it and recalc the angle from earlier objects
-                    while (v2.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                    if (minimumJumpDistance < distanceBetweenStartPositions)
                     {
-                        v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
-                        v2 = BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+                        // MinimumJumpDistance can be sometimes calculated to be ~0 in cases where the player wouldn't move the cursor anywhere and treat the slider as just a normal circle.
+                        //
+                        //        o---<s===>  ← slider (s - start, length smaller than the followcircle)
+                        //        ↑
+                        //    next object
+                        //
+                        // In this case MinimumJumpDistance is calculated to be less than the jump from start of the object to the start of the next one which is impossible.
+                        // Therefore, we set minimal distance and time to be that of a normal start-to-start jump.
 
-                        if (v2.Length * scalingFactor < 20)
-                        {
-                            prevObj = (OsuDifficultyHitObject)prevObj.PreviousTap(0);
-                            prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.PreviousTap(0);
-                        }
+                        MinimumJumpTime = MinimumJumpTime + lastDifficultyObject.MinimumJumpTime + SliderEventGenerator.TAIL_LENIENCY;
+                        LazyJumpDistance = Math.Min(LazyJumpDistance, distanceBetweenStartPositions);
                     }
-
-                    while (v1.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                    else
                     {
-                        v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
-                        prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.PreviousTap(0);
+                        LazyJumpDistance = minimumJumpDistance;
                     }
-
-                    float dot = Vector2.Dot(v1, v2);
-                    float det = v1.X * v2.Y - v1.Y * v2.X;
-
-                    SliderlessAngle = Math.Abs(Math.Atan2(det, dot));
                 }
             }
 
-            if (LastObject is SliderTailCircle lastSliderCircle)
-            {
-                // Account for 32ms sliderend leniency
-                MinimumJumpTime = Math.Max(StrainTime - SliderEventGenerator.TAIL_LENIENCY, MIN_DELTA_TIME);
-
-                //
-                // There are two types of slider-to-object patterns to consider in order to better approximate the real movement a player will take to jump between the hitobjects.
-                //
-                // 1. The anti-flow pattern, where players cut the slider short in order to move to the next hitobject.
-                //
-                //      <======o==>  ← slider
-                //             |     ← most natural jump path
-                //             o     ← a follow-up hitcircle
-                //
-                // In this case the most natural jump path is approximated by LazyJumpDistance.
-                //
-                // 2. The flow pattern, where players follow through the slider to its visual extent into the next hitobject.
-                //
-                //      <======o==>---o
-                //                  ↑
-                //        most natural jump path
-                //
-                // In this case the most natural jump path is better approximated by a new distance called "tailJumpDistance" - the distance between the slider's tail and the next hitobject.
-                //
-                // Thus, the player is assumed to jump the minimum of these two distances in all cases.
-                //
-                float tailJumpDistance = Vector2.Subtract(lastSliderCircle.StackedPosition, currCursorPosition).Length * scalingFactor;
-                MinimumJumpDistance = Math.Max(0, Math.Min(LazyJumpDistance - (MAXIMUM_SLIDER_RADIUS - ASSUMED_SLIDER_RADIUS), tailJumpDistance - MAXIMUM_SLIDER_RADIUS));
-            }
-
-            if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
+            if (lastDifficultyObject is not null && lastLastDifficultyObject is not null && lastLastDifficultyObject.BaseObject is not Spinner)
             {
                 // // Calculates angle based on actual object positions
                 Vector2 v1 = lastLastDifficultyObject.CursorPosition - lastCursorPosition;
                 Vector2 v2 = currCursorPosition - lastCursorPosition;
 
-                OsuDifficultyHitObject prevObj = lastLastDifficultyObject;
-                OsuDifficultyHitObject prevPrevObj = (OsuDifficultyHitObject)lastLastDifficultyObject.Previous(0);
+                OsuDifficultyHitObject prevObj = lastDifficultyObject;
+                OsuDifficultyHitObject prevPrevObj = lastLastDifficultyObject;
 
                 // If the current cursor pos is close enough to the previous one
                 // Ignore the angle from it and recalc the angle from earlier objects
-                while (v2.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                // Ensures doubletaps and sliderjumps are treated properly
+                // For maps like /b/3455732
+                while (v2.Length * scalingFactor < 20 && prevPrevObj is not null)
                 {
                     v1 = prevPrevObj.CursorPosition - prevObj.CursorPosition;
                     v2 = currCursorPosition - prevObj.CursorPosition;
 
-                    if (v2.Length * scalingFactor < 20)
-                    {
-                        prevObj = (OsuDifficultyHitObject)prevObj.Previous(0);
-                        prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.Previous(0);
-                    }
+                    prevObj = prevPrevObj;
+                    prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.Previous(0);
                 }
 
-                while (v1.Length * scalingFactor < 20 && prevObj is not null && prevPrevObj is not null)
+                while (v1.Length * scalingFactor < 20 && prevPrevObj is not null)
                 {
                     v1 = prevPrevObj.CursorPosition - prevObj.CursorPosition;
                     prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.Previous(0);
                 }
 
+                PrevLazyJumpDistance = v1.Length * scalingFactor;
+                PrevMinimumJumpTime = prevObj.MinimumJumpTime;
+                PrevAngle = prevObj.Angle;
+
                 float dot = Vector2.Dot(v1, v2);
                 float det = v1.X * v2.Y - v1.Y * v2.X;
 
                 Angle = Math.Abs(Math.Atan2(det, dot));
+            }
+            else if (lastDifficultyObject is not null)
+            {
+                PrevLazyJumpDistance = lastDifficultyObject.LazyJumpDistance;
+                PrevMinimumJumpTime = lastDifficultyObject.MinimumJumpTime;
+                PrevAngle = lastDifficultyObject.Angle;
+            }
+            else
+            {
+                PrevLazyJumpDistance = 0;
+                PrevMinimumJumpTime = null;
+                PrevAngle = null;
+            }
+        }
+
+        private void setTapDistances(double clockRate)
+        {
+            // We don't need to calculate either angle or distance when one of the last->curr objects is a spinner
+            if (BaseObject is Spinner || LastObject is Spinner || !IsTapObject)
+            {
+                PrevSliderlessJumpDistance = 0;
+                PrevTapStrainTime = null;
+                PrevSliderlessAngle = null;
+                return;
+            }
+
+            // We will scale distances by this factor, so we can assume a uniform CircleSize among beatmaps.
+            float scalingFactor = NORMALISED_RADIUS / (float)BaseObject.Radius;
+
+            Vector2 currCursorPosition = BaseObject.StackedPosition;
+            Vector2 lastCursorPosition = lastTapDifficultyObject?.BaseObject.StackedPosition ?? LastObject.StackedPosition;
+
+            SliderlessJumpDistance = Vector2.Subtract(CursorPosition, lastCursorPosition).Length * scalingFactor;
+
+            if (lastTapDifficultyObject is null)
+            {
+                PrevSliderlessJumpDistance = 0;
+                PrevTapStrainTime = null;
+                PrevSliderlessAngle = null;
+                return;
+            }
+
+            PrevTapStrainTime = lastTapDifficultyObject.TapStrainTime;
+
+            if (lastLastTapDifficultyObject is not null && lastLastTapDifficultyObject.BaseObject is not Spinner)
+            {
+                // // Calculates angle based on actual object positions
+                Vector2 v1 = lastLastTapDifficultyObject.BaseObject.StackedPosition - lastTapDifficultyObject.BaseObject.StackedPosition;
+                Vector2 v2 = BaseObject.StackedPosition - lastTapDifficultyObject.BaseObject.StackedPosition;
+
+                OsuDifficultyHitObject? prevObj = lastTapDifficultyObject;
+                OsuDifficultyHitObject? prevPrevObj = lastLastTapDifficultyObject;
+
+                // If the current cursor pos is close enough to the previous one
+                // Ignore the angle from it and recalc the angle from earlier objects
+                // Ensures doubletaps and sliderjumps are treated properly
+                // For maps like /b/3455732
+                while (v2.Length * scalingFactor < 20 && prevPrevObj is not null)
+                {
+                    v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+                    v2 = BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+
+                    prevObj = prevPrevObj;
+                    prevPrevObj = (OsuDifficultyHitObject?)prevPrevObj.PreviousTap(0);
+                }
+
+                while (v1.Length * scalingFactor < 20 && prevPrevObj is not null)
+                {
+                    v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+                    prevPrevObj = (OsuDifficultyHitObject?)prevPrevObj.PreviousTap(0);
+                }
+
+                PrevSliderlessJumpDistance = v1.Length * scalingFactor;
+                PrevTapStrainTime = prevObj.TapStrainTime;
+                PrevSliderlessAngle = prevObj.Angle;
+
+                float dot = Vector2.Dot(v1, v2);
+                float det = v1.X * v2.Y - v1.Y * v2.X;
+
+                SliderlessAngle = Math.Abs(Math.Atan2(det, dot));
+            }
+            else
+            {
+                PrevSliderlessJumpDistance = lastTapDifficultyObject.SliderlessJumpDistance;
+                PrevTapStrainTime = lastTapDifficultyObject.TapStrainTime;
+                PrevSliderlessAngle = lastTapDifficultyObject.SliderlessAngle;
             }
         }
 
@@ -414,11 +477,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         public DifficultyHitObject PreviousTap(int backwardsIndex)
         {
-            if (!IsTapObject)
+            if (TapIndex is null)
                 return default;
-
-            if (difficultyTapHitObjects is null || TapIndex is null)
-                throw new NullReferenceException("Object does not contain TapObjects or TapIndex");
 
             int index = (int)TapIndex - (backwardsIndex + 1);
             return index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default;
@@ -426,11 +486,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         public DifficultyHitObject NextTap(int forwardsIndex)
         {
-            if (!IsTapObject)
+            if (TapIndex is null)
                 return default;
-
-            if (difficultyTapHitObjects is null || TapIndex is null)
-                throw new InvalidOperationException("Object does not contain TapObjects or TapIndex");
 
             int index = (int)TapIndex + (forwardsIndex + 1);
             return index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default;
