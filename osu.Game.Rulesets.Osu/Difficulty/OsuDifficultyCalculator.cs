@@ -115,6 +115,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double aimDifficultyValue = aim.DifficultyValue();
             double aimNoSlidersDifficultyValue = aimWithoutSliders.DifficultyValue();
+            aimDifficultyValue = Math.Max(aimDifficultyValue, aimNoSlidersDifficultyValue);
             double speedDifficultyValue = speed.DifficultyValue();
 
             mechanicalDifficultyRating = calculateMechanicalDifficultyRating(aimDifficultyValue, speedDifficultyValue);
