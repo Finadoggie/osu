@@ -190,6 +190,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             double fadeInStartTime = BaseObject.StartTime - BaseObject.TimePreempt;
             double fadeInDuration = BaseObject.TimeFadeIn;
 
+            // TODO: Fix this later
+            if (fadeInDuration == 0)
+                fadeInDuration = LastObject.TimeFadeIn;
+
             if (hidden)
             {
                 // Taken from OsuModHidden.
