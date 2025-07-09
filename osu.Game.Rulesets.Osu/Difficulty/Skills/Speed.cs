@@ -9,6 +9,7 @@ using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
 using System.Linq;
 using osu.Game.Rulesets.Osu.Difficulty.Utils;
+using osu.Game.Rulesets.Osu.Objects;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
@@ -45,7 +46,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             double totalStrain = currentStrain * currentRhythm;
 
-            if (!((OsuDifficultyHitObject)current).IsTapObject)
+            if (current.BaseObject is SliderHeadCircle or SliderTick or SliderEndCircle)
                 sliderStrains.Add(totalStrain);
 
             return totalStrain;

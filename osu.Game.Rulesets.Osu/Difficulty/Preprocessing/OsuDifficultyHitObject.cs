@@ -163,9 +163,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 lastLastTapDifficultyObject = tapIndex > 1 ? (OsuDifficultyHitObject)PreviousTap(1) : null;
                 lastTapDifficultyObject = tapIndex > 0 ? (OsuDifficultyHitObject)PreviousTap(0) : null;
 
-                OsuDifficultyHitObject? lastDifficultyTapObject = tapIndex > 0 ? (OsuDifficultyHitObject)tapObjects[(int)tapIndex - 1] : null;
-                if (lastDifficultyTapObject is not null)
-                    TapStrainTime = Math.Max(StartTime - lastDifficultyTapObject.StartTime, MIN_DELTA_TIME);
+                if (lastTapDifficultyObject is not null)
+                    TapStrainTime = Math.Max(StartTime - lastTapDifficultyObject.StartTime, MIN_DELTA_TIME);
             }
             else
                 IsTapObject = false;
