@@ -30,13 +30,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// </summary>
         public static double EvaluateDifficultyOf(DifficultyHitObject current, IReadOnlyList<Mod> mods)
         {
-            if (current.BaseObject is Spinner || !((OsuDifficultyHitObject)current).IsTapObject)
+            if (current.BaseObject is Spinner)
                 return 0;
 
             // derive strainTime for calculation
             var osuCurrObj = (OsuDifficultyHitObject)current;
 
-            double strainTime = osuCurrObj.MinimumJumpTime;
+            double strainTime = osuCurrObj.TapStrainTime;
             double tapStrainTime = osuCurrObj.TapStrainTime;
             double doubletapness = osuCurrObj.IsTapObject ? 1.0 - osuCurrObj.GetDoubletapness((OsuDifficultyHitObject?)osuCurrObj.NextTap(0)) : 1;
 
@@ -60,7 +60,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 speedBonus *= 1000 / tapStrainTime;
             }
 
-            double distance = osuCurrObj.MinimumJumpDistance;
+            double distance = osuCurrObj.LazyJumpDistance;
 
             // Cap distance at single_spacing_threshold
             distance = Math.Min(distance, single_spacing_threshold);

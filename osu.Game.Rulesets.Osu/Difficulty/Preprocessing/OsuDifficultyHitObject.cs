@@ -3,9 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Objects;
-using osu.Game.Rulesets.Objects.Types;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
 using osu.Game.Rulesets.Scoring;
@@ -81,18 +81,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// and was hit with as few movements as possible.
         /// </summary>
         public Vector2 CursorPosition { get; private set; }
-
-        /// <summary>
-        /// The distance travelled by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
-        /// and was hit with as few movements as possible.
-        /// </summary>
-        public double LazyTravelDistance { get; private set; }
-
-        /// <summary>
-        /// The time taken by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
-        /// and was hit with as few movements as possible.
-        /// </summary>
-        public double LazyTravelTime { get; private set; }
 
         /// <summary>
         /// Angle the player has to take to hit this <see cref="OsuDifficultyHitObject"/>.
@@ -262,7 +250,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if (LastObject is SliderTailCircle lastSliderCircle)
             {
                 // Account for 32ms sliderend leniency
-                MinimumJumpTime = Math.Max(StrainTime + 32, MIN_DELTA_TIME);
+                MinimumJumpTime = Math.Max(StrainTime - SliderEventGenerator.TAIL_LENIENCY, MIN_DELTA_TIME);
 
                 //
                 // There are two types of slider-to-object patterns to consider in order to better approximate the real movement a player will take to jump between the hitobjects.
@@ -333,30 +321,34 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         private void calculateCursorPosition(Slider? slider = null)
         {
-            if (Index == 0 || IsTapObject)
+            if (Index == 0 || IsTapObject || slider is null)
             {
                 CursorPosition = BaseObject.StackedPosition;
                 return;
             }
 
-            // This was in the previous slider function
-            // Maybe I'll implement it at some point
-            // double trackingTime = Math.Max(
-            //     // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
-            //     slider.Duration - SliderEventGenerator.TAIL_LENIENCY,
-            //     // There's an edge case where one or more ticks/repeats fall within that leniency range.
-            //     // In such a case, the player needs to track until the final tick or repeat.
-            //     (slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue) - slider.StartTime
-            // );
-            // double trackingTime = slider.Duration - SliderEventGenerator.TAIL_LENIENCY;
-
             Vector2 nextPosition = BaseObject.StackedPosition;
+            Vector2? lazyEndPosition = null;
 
-            if (BaseObject is SliderTailCircle && slider is not null)
+            if (BaseObject is SliderTailCircle)
             {
-                // I really hope this is the right way to get slider tail position
-                // This basically just gets the point 36ms from the end of the slider, accounting for reverse arrows
-                nextPosition = slider.StackedPosition + slider.Path.PositionAt(slider.SpanCount() % 2 == 1 ? slider.SpanDuration - SliderEventGenerator.TAIL_LENIENCY / slider.SpanDuration : Math.Min(SliderEventGenerator.TAIL_LENIENCY, slider.SpanDuration) / slider.SpanDuration);
+                double trackingEndTime = Math.Max(
+                    // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
+                    slider.EndTime + SliderEventGenerator.TAIL_LENIENCY,
+                    // There's an edge case where one or more ticks/repeats fall within that leniency range.
+                    // In such a case, the player needs to track until the final tick or repeat.
+                    slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
+                );
+
+                double lazyTravelTime = trackingEndTime - slider.StartTime;
+
+                double endTimeMin = lazyTravelTime / slider.SpanDuration;
+                if (endTimeMin % 2 >= 1)
+                    endTimeMin = 1 - endTimeMin % 1;
+                else
+                    endTimeMin %= 1;
+
+                lazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin);
             }
 
             // Calculates end position based on if the cursor has moved enough from previous end position
@@ -368,6 +360,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             double currMovementLength = currMovement.Length * scalingFactor;
 
             double requiredMovementLength = BaseObject is SliderTailCircle or SliderTick ? NORMALISED_RADIUS : ASSUMED_SLIDER_RADIUS;
+
+            if (lazyEndPosition is not null)
+            {
+                Vector2 lazyMovement = Vector2.Subtract((Vector2)lazyEndPosition, lastCursorPosition);
+
+                if (lazyMovement.Length < currMovement.Length)
+                    currMovement = lazyMovement;
+
+                currMovementLength = scalingFactor * currMovement.Length;
+            }
 
             if (currMovementLength > requiredMovementLength)
             {
