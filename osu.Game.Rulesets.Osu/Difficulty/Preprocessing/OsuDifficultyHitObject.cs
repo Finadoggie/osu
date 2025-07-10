@@ -350,6 +350,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (!IsTapObject && Parent is not null)
                 Parent.LazyTravelDistance += LazyJumpDistance;
+            if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider)
+                Parent.TravelTime = Math.Max(Parent.LazyTravelTime / clockRate, MIN_DELTA_TIME);
 
             // Give some distance from the radius back for longer sliders
             if (!IsTapObject)
@@ -358,9 +360,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         private void setTapDistances(double clockRate)
         {
-            if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider)
-                Parent.TravelTime = Math.Max(Parent.LazyTravelTime / clockRate, MIN_DELTA_TIME);
-
             // We don't need to calculate either angle or distance when one of the last->curr objects is a spinner
             if (BaseObject is Spinner || LastObject is Spinner || !IsTapObject)
             {
