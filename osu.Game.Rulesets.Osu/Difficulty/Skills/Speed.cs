@@ -50,7 +50,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             double totalStrain = currentStrain * currentRhythm;
 
-            if (current.BaseObject is SliderHeadCircle)
+            if (current.BaseObject is Slider)
                 sliderStrains.Add(totalStrain);
 
             // Console.WriteLine($"{current.Index},{(int)totalStrain}");

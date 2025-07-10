@@ -46,7 +46,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             currentStrain += AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
 
-            if (current.BaseObject is SliderHeadCircle or SliderTick or SliderEndCircle)
+            if (current.BaseObject is Slider or SliderTick or SliderEndCircle)
                 sliderStrains.Add(currentStrain);
 
             return currentStrain;
