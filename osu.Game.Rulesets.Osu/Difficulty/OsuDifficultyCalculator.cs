@@ -354,16 +354,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
                     // Add slider head as tap object
                     if (objects.Count > 0)
-                        objects.Add(new OsuDifficultyHitObject(nestedObjects[0], objects.Last().BaseObject, clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                        objects.Add(new OsuDifficultyHitObject(slider, objects.Last().BaseObject, clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
                     else
-                        objects.Add(new OsuDifficultyHitObject(nestedObjects[0], beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
+                        objects.Add(new OsuDifficultyHitObject(slider, beatmap.HitObjects[i - 1], clockRate, objects, objects.Count, tapObjects, tapObjects.Count));
                     tapObjects.Add(objects.Last());
 
                     // tapObjects not included in args since nested objects past head don't require a tap
                     // Includes slider ticks, reverse arrows, and slider tails
                     for (int j = 1; j < nestedObjects.Count; j++)
                     {
-                        objects.Add(new OsuDifficultyHitObject(nestedObjects[j], nestedObjects[j - 1], clockRate, objects, objects.Count, parent: slider));
+                        objects.Add(new OsuDifficultyHitObject(nestedObjects[j], nestedObjects[j - 1], clockRate, objects, objects.Count, parent: tapObjects.Last()));
                     }
                 }
                 else

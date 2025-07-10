@@ -121,10 +121,24 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double? PrevTapStrainTime;
 
         /// <summary>
+        /// The distance travelled by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
+        /// and was hit with as few movements as possible.
+        /// </summary>
+        public double LazyTravelDistance { get; private set; }
+
+        /// <summary>
+        /// The time taken by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
+        /// and was hit with as few movements as possible.
+        /// </summary>
+        public double LazyTravelTime { get; private set; }
+
+        /// <summary>
         /// The index of this <see cref="DifficultyHitObject"/> in the list of all <see cref="DifficultyHitObject"/>s satisfying <see cref="IsTapObject"/>.
         /// Is null if this object is not a circle or slider head.
         /// </summary>
         public int? TapIndex;
+
+        public OsuDifficultyHitObject? Parent;
 
         private readonly IReadOnlyList<DifficultyHitObject>? difficultyTapHitObjects;
 
@@ -133,7 +147,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         private readonly OsuDifficultyHitObject? lastLastTapDifficultyObject;
         private readonly OsuDifficultyHitObject? lastTapDifficultyObject;
 
-        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, OsuHitObject? parent = null)
+        public OsuDifficultyHitObject(HitObject hitObject, HitObject lastObject, double clockRate, List<DifficultyHitObject> objects, int index, List<DifficultyHitObject>? tapObjects = null, int? tapIndex = null, DifficultyHitObject? parent = null)
             : base(hitObject, lastObject, clockRate, objects, index)
         {
             lastLastDifficultyObject = index > 1 ? (OsuDifficultyHitObject)Previous(1) : null;
@@ -171,10 +185,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if ((tapObjects is not null && tapIndex is null) || (tapObjects is null && tapIndex is not null))
                 throw new MissingFieldException("tapObjects or tapIndex is not assigned during construction.");
 
-            if (parent is Slider slider)
-                calculateCursorPosition(slider);
-            else
-                calculateCursorPosition();
+            Parent = (OsuDifficultyHitObject?)parent;
+
+            calculateCursorPosition();
 
             setDistances(clockRate);
             setTapDistances(clockRate);
@@ -196,13 +209,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             double fadeInStartTime = BaseObject.StartTime - BaseObject.TimePreempt;
             double fadeInDuration = BaseObject.TimeFadeIn;
-
-            // TODO: Fix this later
-            if (fadeInDuration == 0)
-            {
-                fadeInDuration = LastObject.TimeFadeIn;
-                BaseObject.TimeFadeIn = LastObject.TimeFadeIn;
-            }
 
             if (hidden)
             {
@@ -335,6 +341,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 PrevMinimumJumpTime = null;
                 PrevAngle = null;
             }
+
+            if (!IsTapObject && Parent is not null)
+                Parent.LazyTravelDistance += LazyJumpDistance;
         }
 
         private void setTapDistances(double clockRate)
@@ -411,9 +420,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
         }
 
-        private void calculateCursorPosition(Slider? slider = null)
+        private void calculateCursorPosition()
         {
-            if (Index == 0 || IsTapObject || slider is null)
+            if (Index == 0 || IsTapObject)
             {
                 CursorPosition = BaseObject.StackedPosition;
                 return;
@@ -422,7 +431,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             Vector2 nextPosition = BaseObject.StackedPosition;
             Vector2? lazyEndPosition = null;
 
-            if (BaseObject is SliderTailCircle)
+            if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider slider)
             {
                 double trackingEndTime = Math.Max(
                     // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
@@ -432,9 +441,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
                 );
 
-                double lazyTravelTime = trackingEndTime - slider.StartTime;
+                Parent.LazyTravelTime = trackingEndTime - slider.StartTime;
 
-                double endTimeMin = lazyTravelTime / slider.SpanDuration;
+                double endTimeMin = Parent.LazyTravelTime / slider.SpanDuration;
                 if (endTimeMin % 2 >= 1)
                     endTimeMin = 1 - endTimeMin % 1;
                 else

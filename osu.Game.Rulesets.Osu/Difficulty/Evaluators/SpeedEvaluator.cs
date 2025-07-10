@@ -35,6 +35,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // derive strainTime for calculation
             var osuCurrObj = (OsuDifficultyHitObject)current;
+            var osuPrevObj = current.Index > 0 ? (OsuDifficultyHitObject)current.Previous(0) : null;
 
             if (!osuCurrObj.IsTapObject)
                 return 0;
@@ -53,20 +54,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (DifficultyCalculationUtils.MillisecondsToBPM(strainTime) > min_speed_bonus)
                 speedBonus += 0.75 * Math.Pow((DifficultyCalculationUtils.BPMToMilliseconds(min_speed_bonus) - strainTime) / speed_balancing_factor, 2);
 
-            double distance = osuCurrObj.LazyJumpDistance;
-
-            // Adds slider path to distance for calc
-            // For parity with old speed
-            OsuDifficultyHitObject? osuPrevObj = (OsuDifficultyHitObject?)current.Previous(0);
-
-            if (osuPrevObj is not null)
-            {
-                for (OsuDifficultyHitObject osuSliderPart = (OsuDifficultyHitObject)osuPrevObj.Next(0); !osuSliderPart.IsTapObject; osuSliderPart = (OsuDifficultyHitObject)osuSliderPart.Next(0))
-                {
-                    distance += osuSliderPart.LazyJumpDistance;
-                    Console.WriteLine("test");
-                }
-            }
+            double travelDistance = osuPrevObj?.LazyTravelDistance ?? 0;
+            double distance = osuCurrObj.LazyJumpDistance + travelDistance;
 
             // Cap distance at single_spacing_threshold
             distance = Math.Min(distance, single_spacing_threshold);
