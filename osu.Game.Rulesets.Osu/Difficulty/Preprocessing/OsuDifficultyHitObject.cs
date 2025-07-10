@@ -134,6 +134,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double LazyTravelTime { get; private set; }
 
         /// <summary>
+        /// The time taken to travel through <see cref="TravelDistance"/>, with a minimum value of 25ms for <see cref="Slider"/> objects.
+        /// </summary>
+        public double TravelTime { get; private set; }
+
+        /// <summary>
         /// The index of this <see cref="DifficultyHitObject"/> in the list of all <see cref="DifficultyHitObject"/>s satisfying <see cref="IsTapObject"/>.
         /// Is null if this object is not a circle or slider head.
         /// </summary>
@@ -261,10 +266,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             PrevMinimumJumpTime = lastDifficultyObject?.MinimumJumpTime ?? null;
 
-            // Give some distance from the radius back for longer sliders
-            if (!IsTapObject)
-                LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
-
             if (LastObject is SliderTailCircle)
             {
                 MinimumJumpTime -= SliderEventGenerator.TAIL_LENIENCY;
@@ -349,10 +350,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (!IsTapObject && Parent is not null)
                 Parent.LazyTravelDistance += LazyJumpDistance;
+
+            // Give some distance from the radius back for longer sliders
+            if (!IsTapObject)
+                LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
         }
 
         private void setTapDistances(double clockRate)
         {
+            if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider)
+                Parent.TravelTime = Math.Max(Parent.LazyTravelTime / clockRate, MIN_DELTA_TIME);
+
             // We don't need to calculate either angle or distance when one of the last->curr objects is a spinner
             if (BaseObject is Spinner || LastObject is Spinner || !IsTapObject)
             {

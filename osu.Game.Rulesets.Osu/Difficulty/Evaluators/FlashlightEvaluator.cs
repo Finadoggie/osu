@@ -102,7 +102,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double pixelTravelDistance = osuCurrent.LazyTravelDistance / scalingFactor;
 
                 // Reward sliders based on velocity.
-                sliderBonus = Math.Pow(Math.Max(0.0, pixelTravelDistance / osuCurrent.LazyTravelTime - min_velocity), 0.5);
+                sliderBonus = Math.Pow(Math.Max(0.0, pixelTravelDistance / osuCurrent.TravelTime - min_velocity), 0.5);
 
                 // Longer sliders require more memorisation.
                 sliderBonus *= pixelTravelDistance;
