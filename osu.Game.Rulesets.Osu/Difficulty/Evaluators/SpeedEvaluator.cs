@@ -35,7 +35,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // derive strainTime for calculation
             var osuCurrObj = (OsuDifficultyHitObject)current;
-            var osuPrevObj = current.Index > 0 ? (OsuDifficultyHitObject)current.Previous(0) : null;
+            var osuPrevObj = osuCurrObj.TapIndex is > 0 ? (OsuDifficultyHitObject)osuCurrObj.PreviousTap(0) : null;
 
             if (!osuCurrObj.IsTapObject)
                 return 0;
