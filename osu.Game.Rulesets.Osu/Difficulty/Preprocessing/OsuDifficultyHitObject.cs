@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using osu.Framework.Utils;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Mods;
@@ -260,6 +261,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             PrevMinimumJumpTime = lastDifficultyObject?.MinimumJumpTime ?? null;
 
+            // Give some distance from the radius back for longer sliders
+            if (!IsTapObject)
+                LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
+
             if (LastObject is SliderTailCircle)
             {
                 MinimumJumpTime -= SliderEventGenerator.TAIL_LENIENCY;
@@ -460,7 +465,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             Vector2 currMovement = nextPosition - lastCursorPosition;
             double currMovementLength = currMovement.Length * scalingFactor;
 
-            double requiredMovementLength = BaseObject is SliderTailCircle or SliderTick ? NORMALISED_RADIUS : ASSUMED_SLIDER_RADIUS;
+            double requiredMovementLength = ASSUMED_SLIDER_RADIUS;
 
             if (lazyEndPosition is not null)
             {
