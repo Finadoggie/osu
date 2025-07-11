@@ -353,9 +353,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider)
                 Parent.TravelTime = Math.Max(Parent.LazyTravelTime / clockRate, MIN_DELTA_TIME);
 
-            // Give some distance from the radius back for longer sliders
-            if (!IsTapObject)
-                LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
+            // // Give some distance from the radius back for longer sliders
+            // if (!IsTapObject)
+            //     LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
         }
 
         private void setTapDistances(double clockRate)
