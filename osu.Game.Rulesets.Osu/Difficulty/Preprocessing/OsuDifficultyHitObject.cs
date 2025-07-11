@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using osu.Framework.Utils;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Mods;
@@ -125,13 +124,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// The distance travelled by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
         /// and was hit with as few movements as possible.
         /// </summary>
-        public double LazyTravelDistance { get; private set; }
+        public double TravelDistance { get; private set; }
 
         /// <summary>
-        /// The time taken by the cursor upon completion of this <see cref="OsuDifficultyHitObject"/> if it is a <see cref="Slider"/>
-        /// and was hit with as few movements as possible.
+        /// The time taken to travel through <see cref="TravelDistance"/>, not adjusted for clock rate.
+        /// Only use within <see cref="OsuDifficultyHitObject"/>.
         /// </summary>
-        public double LazyTravelTime { get; private set; }
+        public double UnscaledTravelTime { get; private set; }
 
         /// <summary>
         /// The time taken to travel through <see cref="TravelDistance"/>, with a minimum value of 25ms for <see cref="Slider"/> objects.
@@ -349,11 +348,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
 
             if (!IsTapObject && Parent is not null)
-                Parent.LazyTravelDistance += LazyJumpDistance;
+                Parent.TravelDistance += LazyJumpDistance;
             if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider)
-                Parent.TravelTime = Math.Max(Parent.LazyTravelTime / clockRate, MIN_DELTA_TIME);
+                Parent.TravelTime = Math.Max(Parent.UnscaledTravelTime / clockRate, MIN_DELTA_TIME);
 
             // // Give some distance from the radius back for longer sliders
+            // // Don't do this actually, it doesn't work
             // if (!IsTapObject)
             //     LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
         }
@@ -447,15 +447,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             {
                 double trackingEndTime = Math.Max(
                     // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
+                    // This leniency is not scaled by clock rate, it is in the same position regardless of rate.
                     slider.EndTime + SliderEventGenerator.TAIL_LENIENCY,
                     // There's an edge case where one or more ticks/repeats fall within that leniency range.
                     // In such a case, the player needs to track until the final tick or repeat.
                     slider.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
                 );
 
-                Parent.LazyTravelTime = trackingEndTime - slider.StartTime;
+                Parent.UnscaledTravelTime = trackingEndTime - slider.StartTime;
 
-                double endTimeMin = Parent.LazyTravelTime / slider.SpanDuration;
+                double endTimeMin = Parent.UnscaledTravelTime / slider.SpanDuration;
                 if (endTimeMin % 2 >= 1)
                     endTimeMin = 1 - endTimeMin % 1;
                 else
@@ -476,6 +477,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (lazyEndPosition is not null)
             {
+                // The end of a slider has special aim rules due to the relaxed time constraint on position.
+                // There is both a lazy end position as well as the actual end slider position. We assume the player takes the simpler movement.
+                // For sliders that are circular, the lazy end position may actually be farther away than the sliders true end.
+                // This code is designed to prevent buffing situations where lazy end is actually a less efficient movement.
                 Vector2 lazyMovement = Vector2.Subtract((Vector2)lazyEndPosition, lastCursorPosition);
 
                 if (lazyMovement.Length < currMovement.Length)
