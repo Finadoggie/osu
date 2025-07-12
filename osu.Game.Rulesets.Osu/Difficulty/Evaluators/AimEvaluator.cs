@@ -13,6 +13,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
     {
         private const double wide_angle_multiplier = 1.5;
         private const double acute_angle_multiplier = 2.55;
+        private const double xexxar_multiplier = 1.35;
         private const double velocity_change_multiplier = 0.75;
         private const double wiggle_multiplier = 1.02;
 
@@ -67,7 +68,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double acuteAngleBonus = 0;
             double velocityChangeBonus = 0;
             double wiggleBonus = 0;
-            double sliderBonus = 0;
+            double xexxarBonus = 0;
 
             double aimStrain = currVelocity; // Start strain with regular velocity.
 
@@ -172,14 +173,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 velocityChangeBonus *= Math.Pow(Math.Min(currStrainTime, truePrevStrainTime) / Math.Max(currStrainTime, truePrevStrainTime), 2);
             }
 
-            // if (!osuCurrObj.IsTapObject)
-            // {
-            //     sliderBonus = currVelocity;
-            // }
+            if (osuLastObj.BaseObject is Slider)
+            {
+                xexxarBonus = osuLastObj.TravelDistance / osuLastObj.TravelTime;
+            }
 
             aimStrain += wiggleBonus * wiggle_multiplier;
             aimStrain += velocityChangeBonus * velocity_change_multiplier;
-            aimStrain += sliderBonus * 1;
+
+            if (includeSliders)
+                aimStrain += xexxarBonus * xexxar_multiplier;
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);

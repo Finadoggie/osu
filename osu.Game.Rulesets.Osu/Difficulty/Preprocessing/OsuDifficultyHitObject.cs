@@ -349,11 +349,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (!IsTapObject && Parent is not null)
                 Parent.TravelDistance += LazyJumpDistance;
-            if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider)
+
+            if (BaseObject is SliderTailCircle && Parent?.BaseObject is Slider currentSlider)
+            {
+                // Bonus for repeat sliders until a better per nested object strain system can be achieved.
                 Parent.TravelTime = Math.Max(Parent.UnscaledTravelTime / clockRate, MIN_DELTA_TIME);
+                Parent.TravelDistance *= Math.Pow(1 + currentSlider.RepeatCount / 2.5, 1.0 / 2.5);
+            }
 
             // // Give some distance from the radius back for longer sliders
-            // // Don't do this actually, it doesn't work
+            // // Don't do this actually, it breaks normal sliders with many ticks
             // if (!IsTapObject)
             //     LazyJumpDistance = Interpolation.Lerp(LazyJumpDistance, LazyJumpDistance + ASSUMED_SLIDER_RADIUS, LazyJumpDistance / (LazyJumpDistance + ASSUMED_SLIDER_RADIUS));
         }
