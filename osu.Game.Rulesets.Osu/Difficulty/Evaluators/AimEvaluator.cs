@@ -173,6 +173,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 velocityChangeBonus *= Math.Pow(Math.Min(currStrainTime, truePrevStrainTime) / Math.Max(currStrainTime, truePrevStrainTime), 2);
             }
 
+            // This bonus is so maps like /b/2844649 don't lose following the replacement of xexxar sliders
+            // It should be removed once a better solution is found
             if (osuLastObj.BaseObject is Slider)
             {
                 xexxarBonus = osuLastObj.TravelDistance / osuLastObj.TravelTime;
