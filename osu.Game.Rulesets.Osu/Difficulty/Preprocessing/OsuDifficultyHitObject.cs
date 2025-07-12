@@ -322,11 +322,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 while (v1.Length * scalingFactor < 20 && prevPrevObj is not null)
                 {
                     v1 = prevPrevObj.CursorPosition - prevObj.CursorPosition;
+                    PrevMinimumJumpTime = Math.Max(prevObj.StartTime - prevPrevObj.StartTime, MIN_DELTA_TIME);
+
                     prevPrevObj = (OsuDifficultyHitObject)prevPrevObj.Previous(0);
                 }
 
                 PrevLazyJumpDistance = v1.Length * scalingFactor;
-                PrevMinimumJumpTime = prevObj.MinimumJumpTime;
                 PrevAngle = prevObj.Angle;
 
                 float dot = Vector2.Dot(v1, v2);
@@ -417,11 +418,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 while (v1.Length * scalingFactor < 20 && prevPrevObj is not null)
                 {
                     v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
+                    PrevTapStrainTime = Math.Max(prevObj.StartTime - prevPrevObj.StartTime, MIN_DELTA_TIME);
+
                     prevPrevObj = (OsuDifficultyHitObject?)prevPrevObj.PreviousTap(0);
                 }
 
                 PrevSliderlessJumpDistance = v1.Length * scalingFactor;
-                PrevTapStrainTime = prevObj.TapStrainTime;
                 PrevSliderlessAngle = prevObj.Angle;
 
                 float dot = Vector2.Dot(v1, v2);
