@@ -29,14 +29,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double currentStrain;
 
         private double skillMultiplier => 25.6727;
-        private double strainDecayBase => 0.15;
+        private double sliderMultiplier => 5.00;
+        private static double strainDecayBase => 0.15;
 
         private readonly List<double> sliderStrains = new List<double>();
         private readonly List<double> sliderPartStrains = new List<double>();
 
         private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
 
-        protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => currentStrain * strainDecay(time - current.Previous(0).StartTime);
+        protected override double CalculateInitialStrain(double time, DifficultyHitObject current)
+        {
+            return currentStrain * strainDecay(time - current.Previous(0).StartTime);
+        }
 
         protected override double StrainValueAt(DifficultyHitObject current)
         {
@@ -45,7 +49,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (!(IncludeSliders || ((OsuDifficultyHitObject)current).IsTapObject))
                 return 0;
 
-            currentStrain += AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
+            double newStrain = AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
+
+            // Force sliders to decay differently
+            if (((OsuDifficultyHitObject)current).IsTapObject)
+                currentStrain += newStrain;
+            else
+                currentStrain += newStrain / strainDecay(current.StartTime - current.Previous(0).StartTime);
 
             if (current.BaseObject is Slider or SliderTick or SliderEndCircle)
                 sliderStrains.Add(currentStrain);
