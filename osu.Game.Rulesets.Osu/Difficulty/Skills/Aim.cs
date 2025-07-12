@@ -32,6 +32,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double strainDecayBase => 0.15;
 
         private readonly List<double> sliderStrains = new List<double>();
+        private readonly List<double> sliderPartStrains = new List<double>();
 
         private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
 
@@ -49,20 +50,23 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (current.BaseObject is Slider or SliderTick or SliderEndCircle)
                 sliderStrains.Add(currentStrain);
 
+            if (current.BaseObject is SliderTick or SliderEndCircle)
+                sliderPartStrains.Add(currentStrain);
+
             return currentStrain;
         }
 
         public double GetDifficultSliders()
         {
-            if (sliderStrains.Count == 0)
+            if (sliderPartStrains.Count == 0)
                 return 0;
 
-            double maxSliderStrain = sliderStrains.Max();
+            double maxSliderStrain = sliderPartStrains.Max();
 
             if (maxSliderStrain == 0)
                 return 0;
 
-            return sliderStrains.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxSliderStrain * 12.0 - 6.0))));
+            return sliderPartStrains.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxSliderStrain * 12.0 - 6.0))));
         }
 
         public double CountTopWeightedSliders() => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, DifficultyValue());
