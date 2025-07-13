@@ -52,10 +52,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double newStrain = AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
 
             // Force sliders to decay differently
+            // You don't even need me to tell you this is xexxar's fault
             if (((OsuDifficultyHitObject)current).IsTapObject)
                 currentStrain += newStrain;
-            else
-                currentStrain += newStrain / strainDecay(current.StartTime - current.Previous(0).StartTime);
+            else if (current.Next(0) is not null)
+                currentStrain += newStrain / strainDecay(current.Next(0).StartTime - current.StartTime);
 
             if (current.BaseObject is Slider or SliderTick or SliderEndCircle)
                 sliderStrains.Add(currentStrain);
