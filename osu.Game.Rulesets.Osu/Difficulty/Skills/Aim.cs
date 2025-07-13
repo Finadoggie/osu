@@ -62,8 +62,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             // You don't even need me to tell you this is xexxar's fault
             if (((OsuDifficultyHitObject)current).IsTapObject)
                 currentStrain += newStrain;
-            else if (current.Next(0) is not null)
-                currentStrain += newStrain / strainDecay(Math.Min(current.Next(0).StartTime - current.StartTime, SectionLength));
+            else
+                currentStrain += newStrain / strainDecay(Math.Min(current.StartTime - current.Previous(0).StartTime, SectionLength));
 
             return totalStrain;
         }
