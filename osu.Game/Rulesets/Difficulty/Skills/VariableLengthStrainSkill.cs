@@ -262,7 +262,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <param name="peakLists">List of each skill you want to combine</param>
         /// <param name="multipliers">Multipliers for the skill of the corresponding index</param>
         /// <returns></returns>
-        public List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<double> multipliers)
+        public List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<double> multipliers, List<int> ids)
         {
             List<StrainPeak> combinedStrainPeaks = new List<StrainPeak>();
 
@@ -343,7 +343,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
             return combinedStrainPeaks;
         }
 
-        protected virtual double CombineIndividualPeaks(List<double> peaks)
+        protected virtual double CombineIndividualPeaks(List<double> peaks, List<int> ids)
         {
             double strain = 0;
             for (int i = 0; i < peaks.Count; i++)
