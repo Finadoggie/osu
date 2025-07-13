@@ -310,6 +310,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
                         peakLists.RemoveAt(lowestTimeIndex);
                         indexes.RemoveAt(lowestTimeIndex);
                         timeOffsets.RemoveAt(lowestTimeIndex);
+                        ids.RemoveAt(lowestTimeIndex);
                     }
 
                     continue;
@@ -324,7 +325,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
                     timeOffsets[i] += lowestTime;
                 }
 
-                double strain = CombineIndividualPeaks(individualPeaks);
+                double strain = CombineIndividualPeaks(individualPeaks, ids);
 
                 if (strain > 0)
                     combinedStrainPeaks.Add(new StrainPeak(strain, lowestTime));
@@ -337,6 +338,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
                     peakLists.RemoveAt(lowestTimeIndex);
                     indexes.RemoveAt(lowestTimeIndex);
                     timeOffsets.RemoveAt(lowestTimeIndex);
+                    ids.RemoveAt(lowestTimeIndex);
                 }
             }
 
