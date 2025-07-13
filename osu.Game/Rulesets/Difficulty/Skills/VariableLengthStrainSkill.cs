@@ -262,7 +262,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <param name="peakLists">List of each skill you want to combine</param>
         /// <param name="multipliers">Multipliers for the skill of the corresponding index</param>
         /// <returns></returns>
-        public static List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<double> multipliers)
+        public List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<double> multipliers)
         {
             List<StrainPeak> combinedStrainPeaks = new List<StrainPeak>();
 
@@ -316,16 +316,18 @@ namespace osu.Game.Rulesets.Difficulty.Skills
                 }
 
                 // Create new strain that sums all strains for that point in time
-                double strainSum = 0;
+                List<double> individualPeaks = new List<double>();
 
                 for (int i = 0; i < peakLists.Count; i++)
                 {
-                    strainSum += peakLists[i][indexes[i]].Value * multipliers[i];
+                    individualPeaks.Add(peakLists[i][indexes[i]].Value * multipliers[i]);
                     timeOffsets[i] += lowestTime;
                 }
 
-                if (strainSum > 0)
-                    combinedStrainPeaks.Add(new StrainPeak(strainSum, lowestTime));
+                double strain = CombineIndividualPeaks(individualPeaks);
+
+                if (strain > 0)
+                    combinedStrainPeaks.Add(new StrainPeak(strain, lowestTime));
 
                 indexes[lowestTimeIndex]++;
                 timeOffsets[lowestTimeIndex] = 0;
@@ -339,6 +341,14 @@ namespace osu.Game.Rulesets.Difficulty.Skills
             }
 
             return combinedStrainPeaks;
+        }
+
+        protected virtual double CombineIndividualPeaks(List<double> peaks)
+        {
+            double strain = 0;
+            for (int i = 0; i < peaks.Count; i++)
+                strain += peaks[i];
+            return strain;
         }
 
         /// <summary>
