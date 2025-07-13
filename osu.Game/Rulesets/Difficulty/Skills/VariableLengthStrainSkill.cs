@@ -16,6 +16,8 @@ namespace osu.Game.Rulesets.Difficulty.Skills
     /// </summary>
     public abstract class VariableLengthStrainSkill : Skill
     {
+        protected bool PreserveAllStrains => false;
+
         /// <summary>
         /// The weight by which each strain value decays.
         /// </summary>
@@ -183,7 +185,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
 
             // Remove from the back of our strain peaks if there's any which are too deep to contribute to difficulty.
             // `cutOffTime` dictates for us how many sections will preserve at least 99.999% of the difficulty value.
-            while (totalLength / MaxSectionLength > cutOffTime)
+            while (!PreserveAllStrains && totalLength / MaxSectionLength > cutOffTime)
             {
                 totalLength -= strainPeaks[^1].SectionLength;
                 strainPeaks.RemoveAt(strainPeaks.Count - 1);
@@ -217,6 +219,11 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         public IEnumerable<StrainPeak> GetCurrentStrainPeaks() => strainPeaks.Append(new StrainPeak(currentSectionPeak, currentSectionEnd - currentSectionBegin));
 
         /// <summary>
+        /// Returns a live enumerable of the strain for each <see cref="DifficultyHitObject"/> in the beatmap.
+        /// </summary>
+        public IEnumerable<double> GetObjectStrains() => ObjectStrains.AsEnumerable();
+
+        /// <summary>
         /// Returns the calculated difficulty value representing all <see cref="DifficultyHitObject"/>s that have been processed up to this point.
         /// </summary>
         public override double DifficultyValue()
@@ -241,6 +248,91 @@ namespace osu.Game.Rulesets.Difficulty.Skills
             }
 
             return difficulty;
+        }
+
+        /// <summary>
+        /// Combines multiple lists of peaks into a single list of peaks
+        /// </summary>
+        /// <param name="peakLists">List of each skill you want to combine</param>
+        /// <param name="multipliers">Multipliers for the skill of the corresponding index</param>
+        /// <returns></returns>
+        public static List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<double> multipliers)
+        {
+            List<StrainPeak> combinedStrainPeaks = new List<StrainPeak>();
+
+            List<int> indexes = new List<int>();
+            List<double> timeOffsets = new List<double>();
+
+            for (int i = 0; i < peakLists.Count; i++)
+            {
+                if (peakLists[i].Count > 0)
+                {
+                    indexes.Add(0);
+                    timeOffsets.Add(0);
+                }
+                else
+                {
+                    peakLists.RemoveAt(i);
+                }
+            }
+
+            while (peakLists.Count > 0)
+            {
+                // Find the next strain across all skills
+                double lowestTime = peakLists[0][indexes[0]].SectionLength - timeOffsets[0];
+                int lowestTimeIndex = 0;
+
+                for (int i = 1; i < peakLists.Count; i++)
+                {
+                    double listTime = peakLists[i][indexes[i]].SectionLength - timeOffsets[i];
+
+                    if (listTime < lowestTime)
+                    {
+                        lowestTime = listTime;
+                        lowestTimeIndex = i;
+                    }
+                }
+
+                // Skip for strains of length 0
+                if (lowestTime == 0)
+                {
+                    indexes[lowestTimeIndex]++;
+                    timeOffsets[lowestTimeIndex] = 0;
+
+                    if (indexes[lowestTimeIndex] >= peakLists[lowestTimeIndex].Count)
+                    {
+                        peakLists.RemoveAt(lowestTimeIndex);
+                        indexes.RemoveAt(lowestTimeIndex);
+                        timeOffsets.RemoveAt(lowestTimeIndex);
+                    }
+
+                    continue;
+                }
+
+                // Create new strain that sums all strains for that point in time
+                double strainSum = 0;
+
+                for (int i = 0; i < peakLists.Count; i++)
+                {
+                    strainSum += peakLists[i][indexes[i]].Value * multipliers[i];
+                    timeOffsets[i] += lowestTime;
+                }
+
+                if (strainSum > 0)
+                    combinedStrainPeaks.Add(new StrainPeak(strainSum, lowestTime));
+
+                indexes[lowestTimeIndex]++;
+                timeOffsets[lowestTimeIndex] = 0;
+
+                if (indexes[lowestTimeIndex] >= peakLists[lowestTimeIndex].Count)
+                {
+                    peakLists.RemoveAt(lowestTimeIndex);
+                    indexes.RemoveAt(lowestTimeIndex);
+                    timeOffsets.RemoveAt(lowestTimeIndex);
+                }
+            }
+
+            return combinedStrainPeaks;
         }
 
         /// <summary>
