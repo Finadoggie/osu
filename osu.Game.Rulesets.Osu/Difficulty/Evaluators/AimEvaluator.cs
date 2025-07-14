@@ -227,10 +227,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // }
 
             aimStrain += wiggleBonus * wiggle_multiplier * 10 * (1 - Math.Pow(currStrainTime / 400, 1.5));
-            aimStrain += velocityChangeBonus * velocity_change_multiplier * 3 * (1 - Math.Pow(currStrainTime / 400, 1.5));
+            aimStrain += velocityChangeBonus * velocity_change_multiplier * 4 * (1 - Math.Pow(currStrainTime / 400, 1.5));
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
-            aimStrain += Math.Max(acuteAngleBonus * 1.5, wideAngleBonus * wide_angle_multiplier);
+            aimStrain += Math.Max(acuteAngleBonus * 1.5, wideAngleBonus * wide_angle_multiplier * 4);
 
             // Apply high circle size bonus
             aimStrain *= osuCurrObj.SmallCircleBonus;
