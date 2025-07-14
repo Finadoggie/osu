@@ -17,15 +17,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private const double velocity_change_multiplier = 0.75;
         private const double wiggle_multiplier = 1.02;
 
-        /// <summary>
-        /// Evaluates the difficulty of aiming the current object, based on:
-        /// <list type="bullet">
-        /// <item><description>cursor velocity to the current object,</description></item>
-        /// <item><description>angle difficulty,</description></item>
-        /// <item><description>sharp velocity increases,</description></item>
-        /// <item><description>and slider difficulty.</description></item>
-        /// </list>
-        /// </summary>
         public static double EvaluateDifficultyOf(DifficultyHitObject current, bool includeSliders)
         {
             if (current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner)
@@ -70,7 +61,65 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double wiggleBonus = 0;
             double xexxarBonus = 0;
 
-            double aimStrain = currVelocity; // Start strain with regular velocity.
+            double aimDifficulty = currVelocity * (1 - Math.Pow(currStrainTime / 400, 1.5)); // Start strain with regular velocity.
+
+            return Math.Max(aimDifficulty, 0);
+        }
+
+        /// <summary>
+        /// Evaluates the difficulty of aiming the current object, based on:
+        /// <list type="bullet">
+        /// <item><description>cursor velocity to the current object,</description></item>
+        /// <item><description>angle difficulty,</description></item>
+        /// <item><description>sharp velocity increases,</description></item>
+        /// <item><description>and slider difficulty.</description></item>
+        /// </list>
+        /// </summary>
+        public static double EvaluateStrainOf(DifficultyHitObject current, bool includeSliders)
+        {
+            if (current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner)
+                return 0;
+
+            var osuCurrObj = (OsuDifficultyHitObject)current;
+            var osuLastObj = includeSliders ? (OsuDifficultyHitObject)current.Previous(0) : (OsuDifficultyHitObject)osuCurrObj.PreviousTap(0);
+            var osuLastLastObj = includeSliders ? (OsuDifficultyHitObject)current.Previous(1) : (OsuDifficultyHitObject)osuCurrObj.PreviousTap(1);
+            var osuLast2Obj = includeSliders ? (OsuDifficultyHitObject)current.Previous(2) : (OsuDifficultyHitObject)osuCurrObj.PreviousTap(2);
+
+            if (!(includeSliders || osuCurrObj.IsTapObject || osuCurrObj.PrevTapStrainTime is not null))
+                return 0;
+
+            if (osuCurrObj.PrevMinimumJumpTime is null || osuLastObj is null)
+            {
+                return 0;
+            }
+
+            const int radius = OsuDifficultyHitObject.NORMALISED_RADIUS;
+            const int diameter = OsuDifficultyHitObject.NORMALISED_DIAMETER;
+
+            double currStrainTime = includeSliders ? osuCurrObj.MinimumJumpTime : osuCurrObj.TapStrainTime;
+            double prevStrainTime = includeSliders ? (double)osuCurrObj.PrevMinimumJumpTime! : (double)osuCurrObj.PrevTapStrainTime!;
+            double truePrevStrainTime = includeSliders ? osuLastObj.MinimumJumpTime : osuLastObj.TapStrainTime;
+
+            double currDistance = includeSliders ? osuCurrObj.LazyJumpDistance : osuCurrObj.SliderlessJumpDistance;
+            double prevDistance = includeSliders ? osuCurrObj.PrevLazyJumpDistance : osuCurrObj.PrevSliderlessJumpDistance;
+            double truePrevDistance = includeSliders ? osuLastObj.LazyJumpDistance : osuLastObj.SliderlessJumpDistance;
+
+            // Calculate the velocity to the current hitobject, which starts with a base distance / time assuming the last object is a hitcircle.
+            double currVelocity = currDistance / currStrainTime;
+
+            // As above, do the same for the previous hitobject.
+            double prevVelocity = prevDistance / prevStrainTime;
+
+            // Used only for velocity change bonus to avoid certain buzz sliders being worth too much
+            double truePrevVelocity = truePrevDistance / truePrevStrainTime;
+
+            double wideAngleBonus = 0;
+            double acuteAngleBonus = 0;
+            double velocityChangeBonus = 0;
+            double wiggleBonus = 0;
+            double xexxarBonus = 0;
+
+            double aimStrain = 0;
 
             double? currAngle = includeSliders ? osuCurrObj.Angle : osuCurrObj.SliderlessAngle;
             double? lastAngle = includeSliders ? osuCurrObj.PrevAngle : osuCurrObj.PrevSliderlessAngle;
@@ -89,11 +138,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     acuteAngleBonus = calcAcuteAngleBonus(currAngleValue);
 
                     // Pretend this is repetition nerf
-                    acuteAngleBonus *= 0.08 + 0.92 * (1 - Math.Min(acuteAngleBonus, Math.Pow(calcAcuteAngleBonus(lastAngleValue), 3)));
+                    acuteAngleBonus *= 0.70 + 0.30 * (1 - Math.Min(acuteAngleBonus, Math.Pow(calcAcuteAngleBonus(lastAngleValue), 3)));
 
                     // Apply acute angle bonus for BPM above 300 1/2 and distance more than one diameter
                     acuteAngleBonus *= angleBonus *
-                                       DifficultyCalculationUtils.Smootherstep(DifficultyCalculationUtils.MillisecondsToBPM(currStrainTime, 2), 300, 400) *
+                                       (1 + 0.9 * DifficultyCalculationUtils.Smootherstep(DifficultyCalculationUtils.MillisecondsToBPM(currStrainTime, 2), 300, 400)) *
                                        DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
                 }
 
@@ -137,18 +186,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 // Rewarding angles, take the smaller velocity as base.
                 double angleBonus = Math.Min(currVelocity, prevVelocity);
 
-                if (Math.Max(currStrainTime, prevStrainTime) < 1.25 * Math.Min(currStrainTime, prevStrainTime)) // If rhythms are the same.
-                {
-                    acuteAngleBonus = calcAcuteAngleBonus(currAngleValue);
+                acuteAngleBonus = calcAcuteAngleBonus(currAngleValue);
 
-                    // Pretend this is repetition nerf
-                    acuteAngleBonus *= 0.08 + 0.92 * (1 - Math.Min(acuteAngleBonus, Math.Pow(calcAcuteAngleBonus(lastAngleValue), 3)));
+                // Pretend this is repetition nerf
+                acuteAngleBonus *= 0.70 + 0.30 * (1 - Math.Min(acuteAngleBonus, Math.Pow(calcAcuteAngleBonus(lastAngleValue), 3)));
 
-                    // Apply acute angle bonus for BPM above 300 1/2 and distance more than one diameter
-                    acuteAngleBonus *= angleBonus *
-                                       DifficultyCalculationUtils.Smootherstep(DifficultyCalculationUtils.MillisecondsToBPM(currStrainTime, 2), 300, 400) *
-                                       DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
-                }
+                // Apply acute angle bonus for BPM above 300 1/2 and distance more than one diameter
+                acuteAngleBonus *= angleBonus *
+                                   (1 + 0.9 * DifficultyCalculationUtils.Smootherstep(DifficultyCalculationUtils.MillisecondsToBPM(currStrainTime, 2), 300, 400)) *
+                                   DifficultyCalculationUtils.Smootherstep(osuCurrObj.LazyJumpDistance, diameter, diameter * 2);
 
                 wiggleBonus = angleBonus
                               * DifficultyCalculationUtils.Smootherstep(currDistance, radius, diameter)
@@ -175,24 +221,21 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // This bonus is so maps like /b/2844649 don't lose following the replacement of xexxar sliders
             // It should be removed once a better solution is found
-            if (osuLastObj.BaseObject is Slider)
-            {
-                xexxarBonus = osuLastObj.TravelDistance / osuLastObj.TravelTime;
-            }
+            // if (osuLastObj.BaseObject is Slider)
+            // {
+            //     xexxarBonus = osuLastObj.TravelDistance / osuLastObj.TravelTime;
+            // }
 
-            aimStrain += wiggleBonus * wiggle_multiplier;
-            aimStrain += velocityChangeBonus * velocity_change_multiplier;
-
-            if (includeSliders)
-                aimStrain += xexxarBonus * xexxar_multiplier;
+            aimStrain += wiggleBonus * wiggle_multiplier * 10 * (1 - Math.Pow(currStrainTime / 400, 1.5));
+            aimStrain += velocityChangeBonus * velocity_change_multiplier * 3 * (1 - Math.Pow(currStrainTime / 400, 1.5));
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
-            aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
+            aimStrain += Math.Max(acuteAngleBonus * 1.5, wideAngleBonus * wide_angle_multiplier);
 
             // Apply high circle size bonus
             aimStrain *= osuCurrObj.SmallCircleBonus;
 
-            return aimStrain;
+            return Math.Max(aimStrain, 0);
         }
 
         private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));

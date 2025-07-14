@@ -28,7 +28,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         private double currentStrain;
 
-        private double skillMultiplier => 25.6727;
+        private double skillMultiplier => 20.727 * 0.9;
         private double strainDecayBase => 0.15;
 
         private readonly List<double> sliderStrains = new List<double>();
@@ -45,7 +45,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (!(IncludeSliders || ((OsuDifficultyHitObject)current).IsTapObject))
                 return 0;
 
-            currentStrain += AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
+            double difficulty = AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier * 6;
+
+            currentStrain += AimEvaluator.EvaluateStrainOf(current, IncludeSliders) * skillMultiplier * 0.25;
 
             if (current.BaseObject is Slider or SliderTick or SliderEndCircle)
                 sliderStrains.Add(currentStrain);
@@ -53,7 +55,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (current.BaseObject is SliderTick or SliderEndCircle)
                 sliderPartStrains.Add(currentStrain);
 
-            return currentStrain;
+            return difficulty + currentStrain;
         }
 
         public double GetDifficultSliders()
