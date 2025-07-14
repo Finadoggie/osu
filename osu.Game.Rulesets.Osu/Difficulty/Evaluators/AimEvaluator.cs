@@ -63,6 +63,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             double aimDifficulty = currVelocity * (1 - Math.Pow(currStrainTime / 400, 1.5)); // Start strain with regular velocity.
 
+            // Apply high circle size bonus
+            aimDifficulty *= osuCurrObj.SmallCircleBonus;
+
             return Math.Max(aimDifficulty, 0);
         }
 
