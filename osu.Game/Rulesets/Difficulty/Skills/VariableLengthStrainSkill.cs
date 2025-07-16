@@ -262,11 +262,10 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// Combines multiple lists of peaks into a single list of peaks
         /// </summary>
         /// <param name="peakLists">List of each skill you want to combine</param>
-        /// <param name="multipliers">Multipliers for the skill of the corresponding index</param>
         /// <param name="ids">A list of unique numbers to associate with each skill. E.g. skill 1 can have id 0, skill 2 can have id 1, etc</param>
-        /// <param name="summationFunction">A function used to sum individual peaks from each skill. If left null, a normal sum will be used.</param>
+        /// <param name="summationFunction">A function used to sum individual peaks from each skill.</param>
         /// <returns></returns>
-        public static List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<double> multipliers, List<int> ids, SummationFunction? summationFunction = null)
+        public static List<StrainPeak> CombineStrainPeaks(List<List<StrainPeak>> peakLists, List<int> ids, SummationFunction summationFunction)
         {
             List<StrainPeak> combinedStrainPeaks = new List<StrainPeak>();
 
@@ -325,16 +324,11 @@ namespace osu.Game.Rulesets.Difficulty.Skills
 
                 for (int i = 0; i < peakLists.Count; i++)
                 {
-                    individualPeaks.Add(peakLists[i][indexes[i]].Value * multipliers[i]);
+                    individualPeaks.Add(peakLists[i][indexes[i]].Value);
                     timeOffsets[i] += lowestTime;
                 }
 
-                double strain;
-
-                if (summationFunction is not null)
-                    strain = summationFunction(individualPeaks, ids);
-                else
-                    strain = CombineIndividualPeaks(individualPeaks, ids);
+                double strain = summationFunction(individualPeaks, ids);
 
                 if (strain > 0)
                     combinedStrainPeaks.Add(new StrainPeak(strain, lowestTime));
@@ -352,14 +346,6 @@ namespace osu.Game.Rulesets.Difficulty.Skills
             }
 
             return combinedStrainPeaks;
-        }
-
-        protected static double CombineIndividualPeaks(List<double> peaks, List<int> ids)
-        {
-            double strain = 0;
-            for (int i = 0; i < peaks.Count; i++)
-                strain += peaks[i];
-            return strain;
         }
 
         /// <summary>
