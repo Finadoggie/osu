@@ -265,9 +265,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             MinimumJumpTime = Math.Max(StrainTime, MIN_DELTA_TIME);
             PrevMinimumJumpTime = lastDifficultyObject?.MinimumJumpTime ?? null;
 
-            if (LastObject is SliderTailCircle)
+            if (LastObject is SliderTailCircle && lastDifficultyObject?.Parent is not null)
             {
-                MinimumJumpTime -= SliderEventGenerator.TAIL_LENIENCY;
+                double trackingEndTime = Math.Max(
+                    // SliderTailCircle always occurs at the final end time of the slider, but the player only needs to hold until within a lenience before it.
+                    // This leniency is not scaled by clock rate, it is in the same position regardless of rate.
+                    lastDifficultyObject.Parent.EndTime + SliderEventGenerator.TAIL_LENIENCY,
+                    // There's an edge case where one or more ticks/repeats fall within that leniency range.
+                    // In such a case, the player needs to track until the final tick or repeat.
+                    lastDifficultyObject.Parent.BaseObject.NestedHitObjects.LastOrDefault(n => n is not SliderTailCircle)?.StartTime ?? double.MinValue
+                );
+
+                MinimumJumpTime = Math.Max(StartTime - trackingEndTime, MIN_DELTA_TIME);
 
                 if (lastDifficultyObject is not null)
                 {
