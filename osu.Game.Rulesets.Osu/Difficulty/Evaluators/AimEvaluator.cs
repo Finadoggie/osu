@@ -129,7 +129,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 }
             }
 
-            else if (currAngle is not null && lastAngle is not null && !osuCurrObj.IsTapObject)
+            else if (currAngle is not null && lastAngle is not null && !osuLastObj.IsTapObject)
             {
                 double currAngleValue = currAngle.Value;
                 double lastAngleValue = lastAngle.Value;
