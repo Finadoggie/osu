@@ -370,8 +370,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                         {
                             objects.Add(new OsuDifficultyHitObject(nestedObjects[j], lastTick, clockRate, objects, objects.Count, parent: tapObjects.Last()));
 
-                            if (nestedObjects[j] is SliderTick sliderTick)
-                                lastTick = sliderTick;
+                            lastTick = (OsuHitObject)nestedObjects[j];
                         }
                     }
                 }
