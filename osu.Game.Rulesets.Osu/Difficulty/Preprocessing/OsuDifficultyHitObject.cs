@@ -411,11 +411,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
                     v2 = BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
 
-                    if (lastDifficultyObject?.BaseObject is SliderTick or SliderRepeat)
-                    {
-                        Index--;
-                    }
-
                     prevObj = prevPrevObj;
                     prevPrevObj = (OsuDifficultyHitObject?)prevPrevObj.PreviousTap(0);
                 }
