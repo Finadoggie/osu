@@ -526,7 +526,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             return index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default;
         }
 
-        public static bool IsTickFarEnough(SliderTick a, SliderTick b)
+        public static bool IsTickFarEnough(OsuHitObject a, OsuHitObject b)
         {
             double scalingFactor = NORMALISED_RADIUS / a.Radius;
 
