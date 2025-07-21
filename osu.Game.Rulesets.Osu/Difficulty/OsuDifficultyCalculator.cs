@@ -361,9 +361,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
                     // tapObjects not included in args since nested objects past head don't require a tap
                     // Includes slider ticks, reverse arrows, and slider tails
+                    // Ticks are ignored if they're too close to the previous tick
+                    SliderTick? lastTick = null;
+
                     for (int j = 1; j < nestedObjects.Count; j++)
                     {
-                        objects.Add(new OsuDifficultyHitObject(nestedObjects[j], nestedObjects[j - 1], clockRate, objects, objects.Count, parent: tapObjects.Last()));
+                        if (lastTick is null || nestedObjects[j] is not SliderTick || OsuDifficultyHitObject.IsTickFarEnough(lastTick, (SliderTick)nestedObjects[j]))
+                        {
+                            objects.Add(new OsuDifficultyHitObject(nestedObjects[j], (HitObject?)lastTick ?? slider, clockRate, objects, objects.Count, parent: tapObjects.Last()));
+
+                            if (nestedObjects[j] is SliderTick sliderTick)
+                                lastTick = sliderTick;
+                        }
                     }
                 }
                 else

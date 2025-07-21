@@ -411,6 +411,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     v1 = prevPrevObj.BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
                     v2 = BaseObject.StackedPosition - prevObj.BaseObject.StackedPosition;
 
+                    if (lastDifficultyObject?.BaseObject is SliderTick or SliderRepeat)
+                    {
+                        Index--;
+                    }
+
                     prevObj = prevPrevObj;
                     prevPrevObj = (OsuDifficultyHitObject?)prevPrevObj.PreviousTap(0);
                 }
@@ -524,6 +529,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             int index = (int)TapIndex + (forwardsIndex + 1);
             return index >= 0 && index < difficultyTapHitObjects.Count ? difficultyTapHitObjects[index] : default;
+        }
+
+        public static bool IsTickFarEnough(SliderTick a, SliderTick b)
+        {
+            double scalingFactor = NORMALISED_RADIUS / a.Radius;
+
+            return ASSUMED_SLIDER_RADIUS < Vector2.Subtract(a.StackedPosition, b.StackedPosition).Length * scalingFactor;
         }
     }
 }
