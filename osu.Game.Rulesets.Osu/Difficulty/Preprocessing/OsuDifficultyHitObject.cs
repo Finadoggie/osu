@@ -296,7 +296,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                         // In this case MinimumJumpDistance is calculated to be less than the jump from start of the object to the start of the next one which is impossible.
                         // Therefore, we set minimal distance and time to be that of a normal start-to-start jump.
 
-                        MinimumJumpTime = MinimumJumpTime + lastDifficultyObject.MinimumJumpTime + SliderEventGenerator.TAIL_LENIENCY;
+                        MinimumJumpTime = MinimumJumpTime + lastDifficultyObject.MinimumJumpTime + (SliderEventGenerator.TAIL_LENIENCY / clockRate);
                         LazyJumpDistance = Math.Min(LazyJumpDistance, distanceBetweenStartPositions);
                     }
                     else
