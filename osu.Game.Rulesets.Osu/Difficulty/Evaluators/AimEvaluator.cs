@@ -76,7 +76,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double? lastAngle = includeSliders ? osuCurrObj.PrevAngle : osuCurrObj.PrevSliderlessAngle;
             double? trueLastAngle = includeSliders ? osuLastObj.Angle : osuLastObj.SliderlessAngle;
 
-            if (currAngle is not null && lastAngle is not null && osuCurrObj.IsTapObject)
+            if (currAngle is not null && lastAngle is not null && osuLastObj.IsTapObject)
             {
                 double currAngleValue = currAngle.Value;
                 double lastAngleValue = lastAngle.Value;
