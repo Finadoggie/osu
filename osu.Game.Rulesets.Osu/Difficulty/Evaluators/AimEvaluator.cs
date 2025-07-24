@@ -68,7 +68,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double acuteAngleBonus = 0;
             double velocityChangeBonus = 0;
             double wiggleBonus = 0;
-            double sliderBonus = 0;
 
             double aimStrain = currVelocity; // Start strain with regular velocity.
 
@@ -173,22 +172,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 velocityChangeBonus *= Math.Pow(Math.Min(currStrainTime, truePrevStrainTime) / Math.Max(currStrainTime, truePrevStrainTime), 2);
             }
 
-            // This bonus is so maps like /b/2844649 don't lose following the replacement of xexxar sliders
-            // It should be removed once a better solution is found
-            if (!osuCurrObj.IsTapObject)
-            {
-                sliderBonus = osuCurrObj.LazyJumpDistance / osuCurrObj.MinimumJumpTime;
-
-                // This is stupid so you know it's carried over from Xexxar
-                if (osuCurrObj.Parent?.BaseObject is Slider currSlider)
-                    sliderBonus *= Math.Pow(1 + currSlider.RepeatCount / 2.5, 1.0 / 2.5);
-            }
-
             aimStrain += wiggleBonus * wiggle_multiplier;
             aimStrain += velocityChangeBonus * velocity_change_multiplier;
-
-            if (includeSliders)
-                aimStrain += sliderBonus * slider_multiplier;
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
@@ -197,6 +182,32 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             aimStrain *= osuCurrObj.SmallCircleBonus;
 
             return aimStrain;
+        }
+
+        public static double EvaluateSliderBonusOf(DifficultyHitObject current, bool includeSliders)
+        {
+            if (!includeSliders || current.BaseObject is Spinner || current.Index <= 1 || current.Previous(0).BaseObject is Spinner)
+                return 0;
+
+            var osuCurrObj = (OsuDifficultyHitObject)current;
+
+            if (osuCurrObj.IsTapObject)
+                return 0;
+
+            double currStrainTime = osuCurrObj.MinimumJumpTime;
+            double currDistance = osuCurrObj.LazyJumpDistance;
+
+            double currVelocity = currDistance / currStrainTime;
+            double sliderBonus = currVelocity; // Start bonus at velocity
+
+            // This is stupid so you know it's carried over from Xexxar
+            if (osuCurrObj.Parent?.BaseObject is Slider currSlider)
+                sliderBonus *= Math.Pow(1 + currSlider.RepeatCount / 2.5, 1.0 / 2.5);
+
+            // Apply high circle size bonus
+            sliderBonus *= osuCurrObj.SmallCircleBonus;
+
+            return sliderBonus * 4;
         }
 
         private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));

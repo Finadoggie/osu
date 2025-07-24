@@ -46,14 +46,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 return 0;
 
             currentStrain += AimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skillMultiplier;
+            double sliderBonus = AimEvaluator.EvaluateSliderBonusOf(current, IncludeSliders) * skillMultiplier;
 
             if (current.BaseObject is Slider or SliderTick or SliderEndCircle)
-                sliderStrains.Add(currentStrain);
+                sliderStrains.Add(currentStrain + sliderBonus);
 
             if (current.BaseObject is SliderTick or SliderEndCircle)
-                sliderPartStrains.Add(currentStrain);
+                sliderPartStrains.Add(currentStrain + sliderBonus);
 
-            return currentStrain;
+            return currentStrain + sliderBonus;
         }
 
         public double GetDifficultSliders()
