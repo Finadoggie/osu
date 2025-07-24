@@ -13,7 +13,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
     {
         private const double wide_angle_multiplier = 1.5;
         private const double acute_angle_multiplier = 2.55;
-        private const double xexxar_multiplier = 1.35;
+        private const double slider_multiplier = 1.35;
         private const double velocity_change_multiplier = 0.75;
         private const double wiggle_multiplier = 1.02;
 
@@ -68,7 +68,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double acuteAngleBonus = 0;
             double velocityChangeBonus = 0;
             double wiggleBonus = 0;
-            double xexxarBonus = 0;
+            double sliderBonus = 0;
 
             double aimStrain = currVelocity; // Start strain with regular velocity.
 
@@ -175,16 +175,20 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // This bonus is so maps like /b/2844649 don't lose following the replacement of xexxar sliders
             // It should be removed once a better solution is found
-            if (osuLastObj.BaseObject is Slider)
+            if (!osuCurrObj.IsTapObject)
             {
-                xexxarBonus = osuLastObj.TravelDistance / osuLastObj.TravelTime;
+                sliderBonus = osuCurrObj.LazyJumpDistance / osuCurrObj.MinimumJumpTime;
+
+                // This is stupid so you know it's carried over from Xexxar
+                if (osuCurrObj.Parent?.BaseObject is Slider currSlider)
+                    sliderBonus *= Math.Pow(1 + currSlider.RepeatCount / 2.5, 1.0 / 2.5);
             }
 
             aimStrain += wiggleBonus * wiggle_multiplier;
             aimStrain += velocityChangeBonus * velocity_change_multiplier;
 
             if (includeSliders)
-                aimStrain += xexxarBonus * xexxar_multiplier;
+                aimStrain += sliderBonus * slider_multiplier;
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
