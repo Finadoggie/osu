@@ -5,6 +5,7 @@ using System;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
+using osu.Game.Rulesets.Osu.Difficulty.Skills;
 using osu.Game.Rulesets.Osu.Objects;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
@@ -68,7 +69,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double velocityChangeBonus = 0;
             double wiggleBonus = 0;
 
-            double aimStrain = currVelocity; // Start strain with regular velocity.
+            double aimStrain = osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime; // Start strain with regular velocity.
+            aimStrain *= 1 / (1 + Aim.SimStrainDecay(osuCurrObj.AdjustedDeltaTime));
 
             if (osuCurrObj.Angle != null && osuLastObj.Angle != null)
             {

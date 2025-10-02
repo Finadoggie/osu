@@ -28,11 +28,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double currentStrain;
 
         private double skillMultiplier => 26;
-        private double strainDecayBase => 0.15;
+        private static double strainDecayBase => 0.15;
 
         private readonly List<double> sliderStrains = new List<double>();
 
-        private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
+        private static double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
+        public static double SimStrainDecay(double ms, int simulatedNotes = 32) => strainDecay(ms) * strainDecay(ms * simulatedNotes) / (strainDecay(ms) - 1);
 
         protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => currentStrain * strainDecay(time - current.Previous(0).StartTime);
 
