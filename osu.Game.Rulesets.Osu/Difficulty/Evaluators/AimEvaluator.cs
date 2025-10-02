@@ -70,7 +70,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double wiggleBonus = 0;
 
             double aimStrain = osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime; // Start strain with regular velocity.
+            // We want to include strain decay as a feature, but we also want the strain of normal jumps to be velocity
+            // The following function scales strain with time such that the result from adding several objects of strain decay is velocity.
             aimStrain *= 1 / (1 + Aim.SimStrainDecay(osuCurrObj.AdjustedDeltaTime));
+            aimStrain *= 4.5;
 
             if (osuCurrObj.Angle != null && osuLastObj.Angle != null)
             {

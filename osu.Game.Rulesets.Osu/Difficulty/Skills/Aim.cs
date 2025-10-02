@@ -33,7 +33,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private readonly List<double> sliderStrains = new List<double>();
 
         private static double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
-        public static double SimStrainDecay(double ms, int simulatedNotes = 32) => strainDecay(ms) * strainDecay(ms * simulatedNotes) / (strainDecay(ms) - 1);
+        public static double SimStrainDecay(double ms) => -strainDecay(ms) / (strainDecay(ms) - 1);
 
         protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => currentStrain * strainDecay(time - current.Previous(0).StartTime);
 
