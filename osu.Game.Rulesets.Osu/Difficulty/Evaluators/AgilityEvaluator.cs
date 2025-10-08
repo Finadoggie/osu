@@ -37,7 +37,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double currAngle = osuCurrObj.Angle.Value;
                 double lastAngle = osuPrevObj.Angle.Value;
 
-                wideBonus += calcWideAngleBonus(currAngle) * 0.2;
+                wideBonus += calcWideAngleBonus(currAngle) * 0.3;
 
                 baseFactor = 1 - 0.25 * DifficultyCalculationUtils.Smoothstep(lastAngle, double.DegreesToRadians(90), double.DegreesToRadians(40)) * angleDifference(currAngle, lastAngle);
             }
@@ -52,7 +52,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
-            return difficulty * 1.5;
+            return difficulty * 1.0;
         }
 
         private static double angleDifference(double curAngle, double lastAngle)

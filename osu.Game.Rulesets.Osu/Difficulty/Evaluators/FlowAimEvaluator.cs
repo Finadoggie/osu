@@ -45,7 +45,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 }
             }
 
-            double angularChangeBonus = Math.Max(0.0, 1 * Math.Log10(angleDifferenceAdjusted));
+            double angularChangeBonus = Math.Max(0.0, 1.13 * Math.Log10(angleDifferenceAdjusted));
 
             double adjustedDistanceScale = 0.85 + Math.Min(1, jerk / 15) + Math.Max(angularChangeBonus, acuteBonus) * Math.Clamp(jerk / 30, 0.3, 1);
 
