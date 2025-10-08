@@ -28,10 +28,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double currentStrain;
 
         private double currentAgilityStrain;
-        private double aimMultiplier => 0.98;
-        private double snapMultiplier => 31.3;
-        private double flowMultiplier => 7.3;
-        private double agilityMultiplier => 0.15;
+        private double aimMultiplier => 1.5;
         private double strainDecayBase => 0.15;
         private double agilityStrainDecayBase => 0.1;
 
@@ -57,13 +54,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             if (isFlow)
             {
-                currentDifficulty = flowDifficulty * flowMultiplier;
+                currentDifficulty = flowDifficulty;
                 currentStrain += currentDifficulty;
             }
             else
             {
-                currentDifficulty = snapDifficulty * snapMultiplier;
-                currentAgilityStrain += agilityDifficulty * agilityMultiplier;
+                currentDifficulty = snapDifficulty;
+                currentAgilityStrain += agilityDifficulty;
                 currentStrain += currentDifficulty + currentAgilityStrain;
             }
 

@@ -49,7 +49,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
-            return difficulty * 10;
+            return difficulty * 1.5;
         }
 
         private static double angleDifference(double curAngle, double lastAngle)

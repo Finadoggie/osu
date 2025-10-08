@@ -154,7 +154,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (withSliderTravelDistance)
                 aimStrain += sliderBonus * slider_multiplier;
 
-            return aimStrain;
+            return aimStrain * 20.5;
         }
 
         private static double angleDifference(double curAngle, double lastAngle)
