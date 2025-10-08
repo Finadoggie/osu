@@ -35,7 +35,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             if (osuCurrObj.Angle.IsNotNull())
             {
-                acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 2;
+                acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 4;
 
                 // Nerf the third note of bursts as its angle is not representative of its flow difficulty
                 if (osuPrev3Obj.IsNotNull() && Math.Abs(osuPrev2Obj.AdjustedDeltaTime - osuPrev3Obj.AdjustedDeltaTime) > 25)
