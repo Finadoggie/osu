@@ -30,11 +30,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double prevTime = osuPrevObj.AdjustedDeltaTime;
 
             double baseFactor = 1;
+            double wideBonus = 1;
 
             if (osuCurrObj.Angle != null && osuPrevObj.Angle != null)
             {
                 double currAngle = osuCurrObj.Angle.Value;
                 double lastAngle = osuPrevObj.Angle.Value;
+
+                wideBonus += calcWideAngleBonus(currAngle) * 0.2;
 
                 baseFactor = 1 - 0.25 * DifficultyCalculationUtils.Smoothstep(lastAngle, double.DegreesToRadians(90), double.DegreesToRadians(40)) * angleDifference(currAngle, lastAngle);
             }
@@ -43,7 +46,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double angleRepetitionNerf = Math.Pow(baseFactor + (1 - baseFactor) * angleVectorRepetition(osuCurrObj), 2);
 
             // Agility bonus of 1 at base BPM.
-            double agilityBonus = Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(Math.Max(currTime, prevTime), 2) / 270.0, 4.0) - 1);
+            double agilityBonus = Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(Math.Max(currTime, prevTime), 2) / (270.0 / wideBonus), 4.0) - 1);
 
             double difficulty = agilityBonus * angleRepetitionNerf;
 
@@ -87,5 +90,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             return Math.Pow(Math.Min(0.5 / constantAngleCount, 1), 2);
         }
+
+        private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(90), double.DegreesToRadians(140));
     }
 }
