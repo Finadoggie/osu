@@ -56,7 +56,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
-            return difficulty * 0.15;
+            return difficulty * 0.14;
         }
 
         private static double directionChange(DifficultyHitObject current)

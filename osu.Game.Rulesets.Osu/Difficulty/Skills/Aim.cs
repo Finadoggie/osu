@@ -55,13 +55,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (isFlow)
             {
                 currentDifficulty = flowDifficulty;
-                currentStrain += currentDifficulty;
+                currentStrain += currentDifficulty * aimMultiplier;
             }
             else
             {
                 currentDifficulty = snapDifficulty;
                 currentAgilityStrain += agilityDifficulty;
-                currentStrain += currentDifficulty + currentAgilityStrain;
+                currentStrain += (currentDifficulty + currentAgilityStrain) * aimMultiplier;
             }
 
             if (current.BaseObject is Slider)
@@ -69,7 +69,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 sliderStrains.Add(currentStrain);
             }
 
-            return currentStrain * aimMultiplier;
+            return currentStrain;
         }
 
         public double GetDifficultSliders()
