@@ -29,8 +29,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             double angleDifferenceAdjusted = Math.Sin(directionChange(current) / 2) * 180;
 
-            var osuPrev3Obj = (OsuDifficultyHitObject)current.Previous(2);
-
             double acuteBonus = 0;
 
             if (osuCurrObj.Angle.IsNotNull())
@@ -38,14 +36,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 4;
 
                 // Nerf the third note of bursts as its angle is not representative of its flow difficulty
-                if (osuPrev3Obj.IsNotNull() && Math.Abs(osuPrev2Obj.AdjustedDeltaTime - osuPrev3Obj.AdjustedDeltaTime) > 25)
+                if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrev2Obj.AdjustedDeltaTime) > 25)
                 {
                     angleDifferenceAdjusted *= DifficultyCalculationUtils.Smootherstep(osuCurrObj.Angle.Value, double.DegreesToRadians(180), double.DegreesToRadians(90));
                     jerk *= DifficultyCalculationUtils.Smootherstep(osuCurrObj.Angle.Value, double.DegreesToRadians(180), double.DegreesToRadians(90));
                 }
             }
 
-            double angularChangeBonus = Math.Max(0.0, 1.13 * Math.Log10(angleDifferenceAdjusted));
+            double angularChangeBonus = Math.Max(0.0, 1.3 * Math.Log10(angleDifferenceAdjusted));
 
             double adjustedDistanceScale = 0.85 + Math.Min(1, jerk / 15) + Math.Max(angularChangeBonus, acuteBonus) * Math.Clamp(jerk / 30, 0.3, 1);
 
