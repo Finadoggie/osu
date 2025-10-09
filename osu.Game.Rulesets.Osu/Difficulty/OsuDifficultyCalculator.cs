@@ -86,13 +86,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double aimNoSlidersDifficultyValue = aimWithoutSliders.DifficultyValue();
             double speedDifficultyValue = speed.DifficultyValue();
 
-            double mechanicalDifficultyRating = calculateMechanicalDifficultyRating(aimDifficultyValue, speedDifficultyValue);
+            double mechanicalDifficultyValueRating = calculateMechanicalDifficultyRating(aim, speed);
+            // <thing> factor is calculated by checking the difficulty if <thing> is not present
+            double aimFactor = mechanicalDifficultyValueRating > 0 ? OsuRatingCalculator.CalculateDifficultyRating(speedDifficultyValue) / mechanicalDifficultyValueRating : 1;
+            double speedFactor = mechanicalDifficultyValueRating > 0 ? OsuRatingCalculator.CalculateDifficultyRating(aimDifficultyValue) / mechanicalDifficultyValueRating : 1;
             double sliderFactor = aimDifficultyValue > 0 ? OsuRatingCalculator.CalculateDifficultyRating(aimNoSlidersDifficultyValue) / OsuRatingCalculator.CalculateDifficultyRating(aimDifficultyValue) : 1;
 
-            var osuRatingCalculator = new OsuRatingCalculator(mods, totalHits, approachRate, overallDifficulty, mechanicalDifficultyRating, sliderFactor);
+            var osuRatingCalculator = new OsuRatingCalculator(mods, totalHits, approachRate, overallDifficulty, mechanicalDifficultyValueRating, sliderFactor);
 
-            double aimRating = osuRatingCalculator.ComputeAimRating(aimDifficultyValue);
-            double speedRating = osuRatingCalculator.ComputeSpeedRating(speedDifficultyValue);
+            double aimMultiplier = osuRatingCalculator.ComputeAimMultiplier();
+            double speedMultiplier = osuRatingCalculator.ComputeSpeedRating();
+            double mechanicalRating = mechanicalDifficultyValueRating * 0.89;
+            mechanicalRating *= (aimFactor + (1 - aimFactor) * aimMultiplier) * (speedFactor + (1 - speedFactor) * speedMultiplier);
 
             double flashlightRating = 0.0;
 
@@ -105,26 +110,27 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             var simulator = new OsuLegacyScoreSimulator();
             var scoreAttributes = simulator.Simulate(WorkingBeatmap, beatmap);
 
-            double baseAimPerformance = OsuStrainSkill.DifficultyToPerformance(aimRating);
-            double baseSpeedPerformance = OsuStrainSkill.DifficultyToPerformance(speedRating);
+            double baseMechanicalPerformance = OsuStrainSkill.DifficultyToPerformance(mechanicalRating);
             double baseFlashlightPerformance = Flashlight.DifficultyToPerformance(flashlightRating);
 
             double basePerformance =
                 Math.Pow(
-                    Math.Pow(baseAimPerformance, 1.1) +
-                    Math.Pow(baseSpeedPerformance, 1.1) +
+                    Math.Pow(baseMechanicalPerformance, 1.1) +
                     Math.Pow(baseFlashlightPerformance, 1.1), 1.0 / 1.1
                 );
 
-            double starRating = calculateStarRating(basePerformance);
+            double starRating = CalculateStarRating(basePerformance);
 
             OsuDifficultyAttributes attributes = new OsuDifficultyAttributes
             {
                 StarRating = starRating,
                 Mods = mods,
-                AimDifficulty = aimRating,
+                MechanicalDifficulty = mechanicalRating,
+                AimDifficulty = aimMultiplier,
+                AimFactor = aimFactor,
                 AimDifficultSliderCount = difficultSliders,
-                SpeedDifficulty = speedRating,
+                SpeedDifficulty = speedMultiplier,
+                SpeedFactor = speedFactor,
                 SpeedNoteCount = speedNotes,
                 FlashlightDifficulty = flashlightRating,
                 SliderFactor = sliderFactor,
@@ -145,22 +151,56 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             return attributes;
         }
 
-        private double calculateMechanicalDifficultyRating(double aimDifficultyValue, double speedDifficultyValue)
+        private double calculateMechanicalDifficultyRating(Aim aim, Speed speed)
         {
-            double aimValue = OsuStrainSkill.DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(aimDifficultyValue));
-            double speedValue = OsuStrainSkill.DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(speedDifficultyValue));
+            var aimPeaks = aim.GetCurrentStrainPeaks().ToList();
+            var speedPeaks = speed.GetCurrentStrainPeaks().ToList();
 
-            double totalValue = Math.Pow(Math.Pow(aimValue, 1.1) + Math.Pow(speedValue, 1.1), 1 / 1.1);
+            var combinedPeaks = combinePeaks(aimPeaks, speedPeaks);
 
-            return calculateStarRating(totalValue);
+            double difficulty = 0;
+            double weight = 1;
+
+            // Difficulty is the weighted sum of the highest strains from every section.
+            // We're sorting from highest to lowest strain.
+            foreach (double strain in combinedPeaks.OrderDescending())
+            {
+                difficulty += strain * weight;
+                weight *= 0.9;
+            }
+
+            return OsuRatingCalculator.CalculateDifficultyRating(difficulty);
         }
 
-        private double calculateStarRating(double basePerformance)
+        public static double CalculateStarRating(double basePerformance)
         {
             if (basePerformance <= 0.00001)
                 return 0;
 
             return Math.Cbrt(OsuPerformanceCalculator.PERFORMANCE_BASE_MULTIPLIER) * star_rating_multiplier * (Math.Cbrt(100000 / Math.Pow(2, 1 / 1.1) * basePerformance) + 4);
+        }
+
+        /// <summary>
+        /// Combines lists of peak strains from multiple skills into a list of single peak strains for each section.
+        /// </summary>
+        private List<double> combinePeaks(List<double> aimPeaks, List<double> speedPeaks)
+        {
+            var combinedPeaks = new List<double>();
+
+            for (int i = 0; i < aimPeaks.Count; i++)
+            {
+                double aimPeak = aimPeaks[i];
+                double speedPeak = speedPeaks[i];
+
+                double peak = aimPeak + speedPeak;
+
+                // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
+                // These sections will not contribute to the difficulty.
+                if (peak > 0)
+                    combinedPeaks.Add(peak);
+            }
+
+            return combinedPeaks;
         }
 
         protected override IEnumerable<DifficultyHitObject> CreateDifficultyHitObjects(IBeatmap beatmap, double clockRate)

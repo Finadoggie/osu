@@ -137,23 +137,24 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             speedDeviation = calculateSpeedDeviation(osuAttributes);
 
-            double aimValue = computeAimValue(score, osuAttributes);
-            double speedValue = computeSpeedValue(score, osuAttributes);
+            double aimMultiplier = computeAimMultiplier(score, osuAttributes);
+            double speedMultiplier = computeSpeedMultiplier(score, osuAttributes);
+            double mechanicalValue = computeMechanicalValue(score, osuAttributes);
             double accuracyValue = computeAccuracyValue(score, osuAttributes);
             double flashlightValue = computeFlashlightValue(score, osuAttributes);
 
             double totalValue =
                 Math.Pow(
-                    Math.Pow(aimValue, 1.1) +
-                    Math.Pow(speedValue, 1.1) +
+                    Math.Pow(mechanicalValue, 1.1) +
                     Math.Pow(accuracyValue, 1.1) +
                     Math.Pow(flashlightValue, 1.1), 1.0 / 1.1
                 ) * multiplier;
 
             return new OsuPerformanceAttributes
             {
-                Aim = aimValue,
-                Speed = speedValue,
+                Aim = aimMultiplier,
+                Speed = speedMultiplier,
+                Mechanical = mechanicalValue,
                 Accuracy = accuracyValue,
                 Flashlight = flashlightValue,
                 EffectiveMissCount = effectiveMissCount,
@@ -166,12 +167,26 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             };
         }
 
-        private double computeAimValue(ScoreInfo score, OsuDifficultyAttributes attributes)
+        private double computeMechanicalValue(ScoreInfo score, OsuDifficultyAttributes attributes)
+        {
+            double aimMultiplier = computeAimMultiplier(score, attributes);
+            double speedMultiplier = computeSpeedMultiplier(score, attributes);
+
+            double mechanicalValue = OsuStrainSkill.DifficultyToPerformance(attributes.MechanicalDifficulty);
+
+            double aimFactor = Math.Pow(attributes.AimFactor, 3);
+            double speedFactor = Math.Pow(attributes.SpeedFactor, 3);
+
+            mechanicalValue *= (aimFactor + (1 - aimFactor) * aimMultiplier) * (speedFactor + (1 - speedFactor) * speedMultiplier);
+            return mechanicalValue;
+        }
+
+        private double computeAimMultiplier(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
             if (score.Mods.Any(h => h is OsuModAutopilot))
                 return 0.0;
 
-            double aimDifficulty = attributes.AimDifficulty;
+            double aimValue = 1;
 
             if (attributes.SliderCount > 0 && attributes.AimDifficultSliderCount > 0)
             {
@@ -190,11 +205,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                     estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped + countSliderTickMiss, 0, attributes.AimDifficultSliderCount);
                 }
 
-                double sliderNerfFactor = (1 - attributes.SliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + attributes.SliderFactor;
-                aimDifficulty *= sliderNerfFactor;
+                double sliderFactor = Math.Pow(attributes.SliderFactor, 3);
+                double sliderNerfFactor = (1 - sliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + sliderFactor;
+                aimValue *= sliderNerfFactor;
             }
-
-            double aimValue = OsuStrainSkill.DifficultyToPerformance(aimDifficulty);
 
             double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
                                  (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
@@ -222,12 +236,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             return aimValue;
         }
 
-        private double computeSpeedValue(ScoreInfo score, OsuDifficultyAttributes attributes)
+        private double computeSpeedMultiplier(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
             if (score.Mods.Any(h => h is OsuModRelax) || speedDeviation == null)
                 return 0.0;
 
-            double speedValue = OsuStrainSkill.DifficultyToPerformance(attributes.SpeedDifficulty);
+            double speedValue = 1;
 
             double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
                                  (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);

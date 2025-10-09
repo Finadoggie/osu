@@ -9,6 +9,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 {
     public class OsuPerformanceAttributes : PerformanceAttributes
     {
+        [JsonProperty("mechanical")]
+        public double Mechanical { get; set; }
+
         [JsonProperty("aim")]
         public double Aim { get; set; }
 

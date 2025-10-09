@@ -37,8 +37,21 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             // These sections will not contribute to the difficulty.
             var peaks = GetCurrentStrainPeaks().Where(p => p > 0);
 
-            List<double> strains = peaks.OrderDescending().ToList();
+            // var strains = ApplyPeakStrainReduction(peaks.OrderDescending().ToList());
 
+            // Difficulty is the weighted sum of the highest strains from every section.
+            // We're sorting from highest to lowest strain.
+            foreach (double strain in peaks.OrderDescending())
+            {
+                difficulty += strain * weight;
+                weight *= DecayWeight;
+            }
+
+            return difficulty;
+        }
+
+        public IEnumerable<double> ApplyPeakStrainReduction(List<double> strains)
+        {
             // We are reducing the highest strains first to account for extreme difficulty spikes
             for (int i = 0; i < Math.Min(strains.Count, ReducedSectionCount); i++)
             {
@@ -46,15 +59,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 strains[i] *= Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale);
             }
 
-            // Difficulty is the weighted sum of the highest strains from every section.
-            // We're sorting from highest to lowest strain.
-            foreach (double strain in strains.OrderDescending())
-            {
-                difficulty += strain * weight;
-                weight *= DecayWeight;
-            }
-
-            return difficulty;
+            return strains.OrderDescending();
         }
 
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;

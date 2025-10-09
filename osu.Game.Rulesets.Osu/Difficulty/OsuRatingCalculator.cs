@@ -30,12 +30,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             this.sliderFactor = sliderFactor;
         }
 
-        public double ComputeAimRating(double aimDifficultyValue)
+        public double ComputeAimMultiplier()
         {
             if (mods.Any(m => m is OsuModAutopilot))
                 return 0;
 
-            double aimRating = CalculateDifficultyRating(aimDifficultyValue);
+            double aimRating = 1;
 
             if (mods.Any(m => m is OsuModTouchDevice))
                 aimRating = Math.Pow(aimRating, 0.8);
@@ -77,12 +77,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             return aimRating * Math.Cbrt(ratingMultiplier);
         }
 
-        public double ComputeSpeedRating(double speedDifficultyValue)
+        public double ComputeSpeedRating()
         {
             if (mods.Any(m => m is OsuModRelax))
                 return 0;
 
-            double speedRating = CalculateDifficultyRating(speedDifficultyValue);
+            double speedRating = 1;
 
             if (mods.Any(m => m is OsuModAutopilot))
                 speedRating *= 0.5;

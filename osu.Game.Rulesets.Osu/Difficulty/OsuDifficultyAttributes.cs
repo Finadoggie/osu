@@ -14,11 +14,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 {
     public class OsuDifficultyAttributes : DifficultyAttributes
     {
+        [JsonProperty("mechanical_difficulty")]
+        public double MechanicalDifficulty { get; set; }
+
         /// <summary>
         /// The difficulty corresponding to the aim skill.
         /// </summary>
         [JsonProperty("aim_difficulty")]
         public double AimDifficulty { get; set; }
+
+        [JsonProperty("aim_factor")]
+        public double AimFactor { get; set; }
 
         /// <summary>
         /// The number of <see cref="Slider"/>s weighted by difficulty.
@@ -31,6 +37,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         /// </summary>
         [JsonProperty("speed_difficulty")]
         public double SpeedDifficulty { get; set; }
+
+        [JsonProperty("speed_factor")]
+        public double SpeedFactor { get; set; }
 
         /// <summary>
         /// The number of clickable objects weighted by difficulty.
@@ -103,6 +112,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         /// The number of spinners in the beatmap.
         /// </summary>
         public int SpinnerCount { get; set; }
+
 
         public override IEnumerable<(int attributeId, object value)> ToDatabaseAttributes()
         {
