@@ -63,42 +63,45 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             var osuCurrObj = (OsuDifficultyHitObject)current;
             var osuPrevObj = (OsuDifficultyHitObject)current.Previous(0);
-            var osuPrev2Obj = (OsuDifficultyHitObject)current.Previous(1);
 
-            if (osuCurrObj.AngleSigned.IsNotNull() && osuPrevObj.AngleSigned.IsNotNull() &&
-                osuCurrObj.Angle.IsNotNull() && osuPrevObj.Angle.IsNotNull())
-            {
-                double signedAngleDifference = Math.Abs(osuCurrObj.AngleSigned.Value - osuPrevObj.AngleSigned.Value);
+            if (osuCurrObj.AngleSigned.IsNull() || osuPrevObj.AngleSigned.IsNull() ||
+                osuCurrObj.Angle.IsNull() || osuPrevObj.Angle.IsNull()) return directionChangeFactor;
 
-                var curBaseObj = (OsuHitObject)osuCurrObj.BaseObject;
-                var prevBaseObj = (OsuHitObject)osuPrevObj.BaseObject;
-                var prev2BaseObj = (OsuHitObject)osuPrev2Obj.BaseObject;
+            double signedAngleDifference = Math.Abs(osuCurrObj.AngleSigned.Value - osuPrevObj.AngleSigned.Value);
 
-                Vector2 lineVector = prev2BaseObj.StackedEndPosition - curBaseObj.StackedEndPosition;
-                Vector2 toMiddle = prevBaseObj.StackedEndPosition - curBaseObj.StackedEndPosition;
+            // Account for the fact that you can aim patterns in a straight line
+            signedAngleDifference *= calculateLinearity(osuCurrObj);
 
-                float dotToMiddleLine = Vector2.Dot(toMiddle, lineVector);
-                float dotLineLine = Vector2.Dot(lineVector, lineVector);
+            double angleDifference = Math.Abs(osuCurrObj.Angle.Value - osuPrevObj.Angle.Value);
 
-                float projectionScalar = dotToMiddleLine / dotLineLine;
-
-                Vector2 projection = lineVector * projectionScalar;
-
-                float scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / (float)curBaseObj.Radius;
-
-                double perpendicularDistance = curBaseObj.StackedPosition.Equals(prev2BaseObj.StackedPosition)
-                    ? osuCurrObj.LazyJumpDistance
-                    : (toMiddle * scalingFactor - projection * scalingFactor).Length;
-
-                // Account for the fact that you can aim patterns in a straight line
-                signedAngleDifference *= DifficultyCalculationUtils.Smootherstep(perpendicularDistance, OsuDifficultyHitObject.NORMALISED_RADIUS * 0.5, OsuDifficultyHitObject.NORMALISED_RADIUS * 1.5);
-
-                double angleDifference = Math.Abs(osuCurrObj.Angle.Value - osuPrevObj.Angle.Value);
-
-                directionChangeFactor += Math.Max(signedAngleDifference, angleDifference);
-            }
+            directionChangeFactor += Math.Max(signedAngleDifference, angleDifference);
 
             return directionChangeFactor;
+        }
+
+        private static double calculateLinearity(OsuDifficultyHitObject current)
+        {
+            var curBaseObj = (OsuHitObject)current.BaseObject;
+            var prevBaseObj = (OsuHitObject)current.Previous(0).BaseObject;
+            var prev2BaseObj = (OsuHitObject)current.Previous(1).BaseObject;
+
+            Vector2 lineVector = prev2BaseObj.StackedEndPosition - curBaseObj.StackedEndPosition;
+            Vector2 toMiddle = prevBaseObj.StackedEndPosition - curBaseObj.StackedEndPosition;
+
+            float dotToMiddleLine = Vector2.Dot(toMiddle, lineVector);
+            float dotLineLine = Vector2.Dot(lineVector, lineVector);
+
+            float projectionScalar = dotToMiddleLine / dotLineLine;
+
+            Vector2 projection = lineVector * projectionScalar;
+
+            float scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / (float)curBaseObj.Radius;
+
+            double perpendicularDistance = curBaseObj.StackedPosition.Equals(prev2BaseObj.StackedPosition)
+                ? current.LazyJumpDistance
+                : (toMiddle * scalingFactor - projection * scalingFactor).Length;
+
+            return DifficultyCalculationUtils.Smootherstep(perpendicularDistance, OsuDifficultyHitObject.NORMALISED_RADIUS * 0.5, OsuDifficultyHitObject.NORMALISED_RADIUS * 1.5);
         }
 
         private static double calcAcuteAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(140), double.DegreesToRadians(70));
