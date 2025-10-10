@@ -115,20 +115,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double currAngle = osuCurrObj.CurrSliderAngle.Value;
                 double lastAngle = osuCurrObj.PrevSliderAngle.Value;
 
-                // Rewarding angles, take the smaller velocity as base.
-                double angleBonus = Math.Min(movementVelocity, travelVelocity);
-
                 double baseFactor = 1 - 0.3 * DifficultyCalculationUtils.Smoothstep(lastAngle, double.DegreesToRadians(90), double.DegreesToRadians(40)) * angleDifference(currAngle, lastAngle);
 
                 // Penalize angle repetition.
                 sliderAngleRepetitionNerf = Math.Pow(baseFactor + (1 - baseFactor) * angleVectorRepetition(osuCurrObj), 2);
-
-                wideSliderAngleBonus = calcWideAngleBonus(currAngle);
-
-                double wideBaseFactor = 1 - 0.3 * DifficultyCalculationUtils.Smoothstep(lastAngle, double.DegreesToRadians(140), double.DegreesToRadians(90)) * angleDifference(currAngle, lastAngle);
-
-                // Penalize angle repetition.
-                wideSliderAngleBonus *= angleBonus * Math.Pow(wideBaseFactor + (1 - wideBaseFactor) * angleVectorRepetition(osuCurrObj), 2);
             }
 
             if (Math.Max(prevVelocity, currVelocity) != 0)
@@ -158,8 +148,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
             aimStrain += Math.Max(
                 currVelocity * angleRepetitionNerf + wideAngleBonus * 1.25,
-                Math.Max(travelVelocity, movementVelocity) * sliderAngleRepetitionNerf +
-                wideSliderAngleBonus * 2.0);
+                Math.Max(travelVelocity, movementVelocity) * sliderAngleRepetitionNerf);
 
             aimStrain += wiggleBonus * 2;
             aimStrain += velocityChangeBonus * velocity_change_multiplier;
@@ -169,7 +158,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             // Add in additional slider velocity bonus.
             if (withSliderTravelDistance)
-                aimStrain += sliderBonus * 1.5;
+                aimStrain += sliderBonus * 2.0;
 
             return aimStrain * 20.5;
         }

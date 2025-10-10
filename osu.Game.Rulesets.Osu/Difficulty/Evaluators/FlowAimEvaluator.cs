@@ -23,8 +23,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             var osuPrev2Obj = (OsuDifficultyHitObject)current.Previous(1);
             var osuPrev3Obj = (OsuDifficultyHitObject)current.Previous(1);
 
-            double currDistanceDifference = Math.Abs(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance - osuPrevObj.LazyJumpDistance + osuPrev2Obj.TravelDistance);
-            double prevDistanceDifference = Math.Abs(osuPrevObj.LazyJumpDistance + osuPrev2Obj.TravelDistance - osuPrev2Obj.LazyJumpDistance + osuPrev3Obj.TravelDistance);
+            double currDistanceDifference = Math.Abs(osuCurrObj.LazyJumpDistance - osuPrevObj.LazyJumpDistance);
+            double prevDistanceDifference = Math.Abs(osuPrevObj.LazyJumpDistance - osuPrev2Obj.LazyJumpDistance);
 
             double jerk = Math.Abs(currDistanceDifference - prevDistanceDifference);
 
