@@ -21,9 +21,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             var osuCurrObj = (OsuDifficultyHitObject)current;
             var osuPrevObj = (OsuDifficultyHitObject)current.Previous(0);
             var osuPrev2Obj = (OsuDifficultyHitObject)current.Previous(1);
+            var osuPrev3Obj = (OsuDifficultyHitObject)current.Previous(1);
 
-            double currDistanceDifference = Math.Abs(osuCurrObj.MinimumJumpDistance - osuPrevObj.MinimumJumpDistance);
-            double prevDistanceDifference = Math.Abs(osuPrevObj.MinimumJumpDistance - osuPrev2Obj.MinimumJumpDistance);
+            double currDistanceDifference = Math.Abs(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance - osuPrevObj.LazyJumpDistance + osuPrev2Obj.TravelDistance);
+            double prevDistanceDifference = Math.Abs(osuPrevObj.LazyJumpDistance + osuPrev2Obj.TravelDistance - osuPrev2Obj.LazyJumpDistance + osuPrev3Obj.TravelDistance);
 
             double jerk = Math.Abs(currDistanceDifference - prevDistanceDifference);
 
@@ -48,7 +49,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double adjustedDistanceScale = 0.85 + Math.Min(1, jerk / 15) + Math.Max(angularChangeBonus, acuteBonus) * Math.Clamp(jerk / 30, 0.3, 1);
 
             // Value distance exponentially, and scale with direction and distance changes
-            double distanceFactor = Math.Pow(osuCurrObj.LazyJumpDistance, 2) * adjustedDistanceScale;
+            double distanceFactor = Math.Pow(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance, 2) * adjustedDistanceScale;
 
             double difficulty = distanceFactor / osuCurrObj.AdjustedDeltaTime;
 
