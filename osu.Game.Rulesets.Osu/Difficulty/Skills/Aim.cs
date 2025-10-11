@@ -32,6 +32,26 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double strainDecayBase => 0.15;
         private double agilityStrainDecayBase => 0.1;
 
+        private static double flowDif;
+
+        public class FlowAim : OsuStrainSkill
+        {
+            public FlowAim(Mod[] mods)
+                : base(mods)
+            {
+            }
+
+            protected override double StrainValueAt(DifficultyHitObject current)
+            {
+                return flowDif;
+            }
+
+            protected override double CalculateInitialStrain(double time, DifficultyHitObject current)
+            {
+                return flowDif;
+            }
+        }
+
         private readonly List<double> sliderStrains = new List<double>();
 
         private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
@@ -52,10 +72,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             bool isFlow = (flowDifficulty) < (snapDifficulty + agilityDifficulty);
 
+            flowDif = 0;
+
             if (isFlow)
             {
                 currentDifficulty = flowDifficulty;
                 currentStrain += currentDifficulty * aimMultiplier;
+                flowDif = currentStrain;
             }
             else
             {

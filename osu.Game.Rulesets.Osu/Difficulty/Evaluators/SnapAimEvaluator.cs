@@ -55,7 +55,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double prevVelocity = osuLastObj.LazyJumpDistance / osuLastObj.AdjustedDeltaTime;
 
             double wideAngleBonus = 0;
-            double wideSliderAngleBonus = 0;
             double sliderBonus = 0;
             double velocityChangeBonus = 0;
             double wiggleBonus = 0;
