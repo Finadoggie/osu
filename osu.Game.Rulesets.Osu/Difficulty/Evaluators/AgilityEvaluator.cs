@@ -82,6 +82,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             return Math.Pow(Math.Min(0.5 / constantAngleCount, 1), 2);
         }
 
-        private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(50), double.DegreesToRadians(140));
+        private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(60), double.DegreesToRadians(110));
     }
 }

@@ -33,7 +33,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             if (osuCurrObj.Angle.IsNotNull())
             {
-                acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 3 * calculateLinearity(osuCurrObj);
+                acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 4 * calculateLinearity(osuCurrObj);
 
                 // Nerf the third note of bursts as its angle is not representative of its flow difficulty
                 if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrev2Obj.AdjustedDeltaTime) > 25)
@@ -45,18 +45,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             double angularChangeBonus = Math.Max(0.0, 1.3 * Math.Log10(angleDifferenceAdjusted));
 
-            if (osuPrevObj.BaseObject is Slider)
-            {
-                jerk = 0;
-                angularChangeBonus = 0.5;
-            }
+            double antiFlowBonus = Math.Min(1, jerk / 15) + Math.Max(angularChangeBonus * Math.Clamp(jerk / 30, 0.3, 1), acuteBonus);
 
-            double adjustedDistanceScale = 0.85 + Math.Min(1, jerk / 15) + Math.Max(angularChangeBonus * Math.Clamp(jerk / 30, 0.3, 1), acuteBonus);
+            // Value distance exponentially
+            double difficulty = Math.Pow(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance, 2) / osuCurrObj.AdjustedDeltaTime;
 
-            // Value distance exponentially, and scale with direction and distance changes
-            double distanceFactor = Math.Pow(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance, 2) * adjustedDistanceScale;
-
-            double difficulty = distanceFactor / osuCurrObj.AdjustedDeltaTime;
+            difficulty += (osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime) * antiFlowBonus * 80;
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
@@ -107,7 +101,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 ? current.LazyJumpDistance
                 : (toMiddle * scalingFactor - projection * scalingFactor).Length;
 
-            return DifficultyCalculationUtils.Smootherstep(perpendicularDistance, OsuDifficultyHitObject.NORMALISED_RADIUS * 0.85, OsuDifficultyHitObject.NORMALISED_RADIUS * 1.5);
+            return DifficultyCalculationUtils.Smootherstep(perpendicularDistance, OsuDifficultyHitObject.NORMALISED_RADIUS, OsuDifficultyHitObject.NORMALISED_RADIUS * 1.5);
         }
 
         private static double calcAcuteAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(140), double.DegreesToRadians(70));
