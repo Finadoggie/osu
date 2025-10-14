@@ -158,9 +158,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     (OsuHitObject)osuLast3Obj.BaseObject);
             }
 
-            aimStrain *= calculateSmallJumpNerf(osuCurrObj);
-            aimStrain *= calculateBigJumpBuff(osuCurrObj);
-
             aimStrain += wiggleBonus * wiggle_multiplier;
             aimStrain += velocityChangeBonus * velocity_change_multiplier;
 
