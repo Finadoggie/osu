@@ -11,7 +11,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 {
     public class AltEvaluator
     {
-        private static double spacingMidpoint => OsuDifficultyHitObject.NORMALISED_DIAMETER * 1.60; // 1.25 circles distance between centers
+        private static double spacingMidpoint => OsuDifficultyHitObject.NORMALISED_DIAMETER * 1.75; // 1.25 circles distance between centers
         private static double spacingRange => OsuDifficultyHitObject.NORMALISED_DIAMETER * 0.50; // 1.25 circles distance between centers
 
         public static double EvaluateDifficultyOf(DifficultyHitObject current)

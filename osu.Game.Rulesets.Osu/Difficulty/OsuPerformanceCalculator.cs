@@ -55,7 +55,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double? speedDeviation;
 
-        private double altEstimatedSliderBreaks;
+        private double aimEstimatedSliderBreaks;
         private double speedEstimatedSliderBreaks;
 
         public OsuPerformanceCalculator()
@@ -139,7 +139,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double aimValue = computeAimValue(score, osuAttributes);
             double speedValue = computeSpeedValue(score, osuAttributes);
-            double altValue = computeAltValue(score, osuAttributes);
             double accuracyValue = computeAccuracyValue(score, osuAttributes);
             double flashlightValue = computeFlashlightValue(score, osuAttributes);
 
@@ -147,7 +146,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 Math.Pow(
                     Math.Pow(aimValue, 1.1) +
                     Math.Pow(speedValue, 1.1) +
-                    Math.Pow(altValue, 1.1) +
                     Math.Pow(accuracyValue, 1.1) +
                     Math.Pow(flashlightValue, 1.1), 1.0 / 1.1
                 ) * multiplier;
@@ -156,13 +154,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 Aim = aimValue,
                 Speed = speedValue,
-                Alt = altValue,
                 Accuracy = accuracyValue,
                 Flashlight = flashlightValue,
                 EffectiveMissCount = effectiveMissCount,
                 ComboBasedEstimatedMissCount = comboBasedEstimatedMissCount,
                 ScoreBasedEstimatedMissCount = scoreBasedEstimatedMissCount,
-                AimEstimatedSliderBreaks = altEstimatedSliderBreaks,
+                AimEstimatedSliderBreaks = aimEstimatedSliderBreaks,
                 SpeedEstimatedSliderBreaks = speedEstimatedSliderBreaks,
                 SpeedDeviation = speedDeviation,
                 Total = totalValue
@@ -205,9 +202,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             if (effectiveMissCount > 0)
             {
-                altEstimatedSliderBreaks = calculateEstimatedSliderBreaks(attributes.AimTopWeightedSliderFactor, attributes);
+                aimEstimatedSliderBreaks = calculateEstimatedSliderBreaks(attributes.AimTopWeightedSliderFactor, attributes);
 
-                double relevantMissCount = Math.Min(effectiveMissCount + altEstimatedSliderBreaks, totalImperfectHits + countSliderTickMiss);
+                double relevantMissCount = Math.Min(effectiveMissCount + aimEstimatedSliderBreaks, totalImperfectHits + countSliderTickMiss);
 
                 aimValue *= calculateMissPenalty(relevantMissCount, attributes.AimDifficultStrainCount);
             }
@@ -270,39 +267,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             speedValue *= Math.Pow((accuracy + relevantAccuracy) / 2.0, (14.5 - overallDifficulty) / 2);
 
             return speedValue;
-        }
-
-        private double computeAltValue(ScoreInfo score, OsuDifficultyAttributes attributes)
-        {
-            if (score.Mods.Any(h => h is OsuModAutopilot))
-                return 0.0;
-
-            double altValue = OsuStrainSkill.DifficultyToPerformance(attributes.AltDifficulty);
-
-            double lengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
-                                 (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
-            altValue *= lengthBonus;
-
-            if (effectiveMissCount > 0)
-            {
-                altEstimatedSliderBreaks = calculateEstimatedSliderBreaks(attributes.AltTopWeightedSliderFactor, attributes);
-
-                double relevantMissCount = Math.Min(effectiveMissCount + altEstimatedSliderBreaks, totalImperfectHits + countSliderTickMiss);
-
-                altValue *= calculateMissPenalty(relevantMissCount, attributes.AltDifficultStrainCount);
-            }
-
-            // TC bonuses are excluded when blinds is present as the increased visual difficulty is unimportant when notes cannot be seen.
-            if (score.Mods.Any(m => m is OsuModBlinds))
-                altValue *= 1.3 + (totalHits * (0.0016 / (1 + 2 * effectiveMissCount)) * Math.Pow(accuracy, 16)) * (1 - 0.003 * attributes.DrainRate * attributes.DrainRate);
-            else if (score.Mods.Any(m => m is OsuModTraceable))
-            {
-                altValue *= 1.0 + OsuRatingCalculator.CalculateVisibilityBonus(score.Mods, approachRate);
-            }
-
-            altValue *= accuracy;
-
-            return altValue;
         }
 
         private double computeAccuracyValue(ScoreInfo score, OsuDifficultyAttributes attributes)
