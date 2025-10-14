@@ -25,36 +25,51 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double currDistanceDifference = Math.Abs(osuCurrObj.LazyJumpDistance - osuPrevObj.LazyJumpDistance);
             double prevDistanceDifference = Math.Abs(osuPrevObj.LazyJumpDistance - osuPrev2Obj.LazyJumpDistance);
 
-            double jerk = Math.Abs(currDistanceDifference - prevDistanceDifference);
+            double jerk = Math.Abs(currDistanceDifference - prevDistanceDifference) / 15;
 
-            double angleDifferenceAdjusted = Math.Sin(directionChange(current) / 2) * 180;
+            int i = 0;
+            var loopObj = osuCurrObj;
+            double curAngleChange = directionChange(current);
 
-            double acuteBonus = 0;
+            double angleChangeSum = 0;
+
+            while (i <= 6 && Math.Abs(osuCurrObj.AdjustedDeltaTime - loopObj.AdjustedDeltaTime) < 25)
+            {
+                loopObj = (OsuDifficultyHitObject)osuCurrObj.Previous(i);
+
+                if (loopObj.IsNull())
+                    break;
+
+                angleChangeSum += directionChange(loopObj);
+                i++;
+            }
 
             if (osuCurrObj.Angle.IsNotNull())
             {
-                acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 4 * calculateLinearity(osuCurrObj);
+                if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrevObj.AdjustedDeltaTime) > 25)
+                {
+                    jerk *= 0.1;
+                }
 
                 // Nerf the third note of bursts as its angle is not representative of its flow difficulty
                 if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrev2Obj.AdjustedDeltaTime) > 25)
                 {
-                    angleDifferenceAdjusted *= DifficultyCalculationUtils.Smootherstep(osuCurrObj.Angle.Value, double.DegreesToRadians(160), double.DegreesToRadians(90));
-                    jerk *= DifficultyCalculationUtils.Smootherstep(osuCurrObj.Angle.Value, double.DegreesToRadians(160), double.DegreesToRadians(90));
+                    jerk *= 0.1 + calcAcuteAngleBonus(osuCurrObj.Angle.Value);
                 }
             }
 
-            double angularChangeBonus = Math.Max(0.0, 1.3 * Math.Log10(angleDifferenceAdjusted));
+            double averageDirectionChange = angleChangeSum / 15;
 
-            double antiFlowBonus = Math.Min(1, jerk / 15) + Math.Max(angularChangeBonus * Math.Clamp(jerk / 30, 0.3, 1), acuteBonus);
+            double antiFlowBonus = Math.Pow((jerk + curAngleChange + averageDirectionChange) / 3, 1.5);
 
             // Value distance exponentially
             double difficulty = Math.Pow(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance, 2) / osuCurrObj.AdjustedDeltaTime;
 
-            difficulty += (osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime) * antiFlowBonus * 80;
+            difficulty += (osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime) * antiFlowBonus * 50;
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
-            return difficulty * 0.135;
+            return difficulty * 0.195;
         }
 
         private static double directionChange(DifficultyHitObject current)
@@ -75,6 +90,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double angleDifference = Math.Abs(osuCurrObj.Angle.Value - osuPrevObj.Angle.Value);
 
             directionChangeFactor += Math.Max(signedAngleDifference, angleDifference);
+
+            double acuteBonus = calcAcuteAngleBonus(osuCurrObj.Angle.Value) * 4 * calculateLinearity(osuCurrObj);
+
+            var osuPrev2Obj = (OsuDifficultyHitObject)current.Previous(1);
+            if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrevObj.AdjustedDeltaTime) > 25 ||
+                Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrev2Obj.AdjustedDeltaTime) > 25)
+                return acuteBonus;
+
+            directionChangeFactor = Math.Max(directionChangeFactor, acuteBonus);
 
             return directionChangeFactor;
         }
