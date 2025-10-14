@@ -119,6 +119,53 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             return speedRating * Math.Cbrt(ratingMultiplier);
         }
 
+        public double ComputeAltRating(double altDifficultyValue)
+        {
+            if (mods.Any(m => m is OsuModAutopilot))
+                return 0;
+
+            double altRating = CalculateDifficultyRating(altDifficultyValue);
+
+            if (mods.Any(m => m is OsuModTouchDevice))
+                altRating = Math.Pow(altRating, 0.8);
+
+            if (mods.Any(m => m is OsuModRelax))
+                altRating *= 0.9;
+
+            if (mods.Any(m => m is OsuModMagnetised))
+            {
+                float magnetisedStrength = mods.OfType<OsuModMagnetised>().First().AttractionStrength.Value;
+                altRating *= 1.0 - magnetisedStrength;
+            }
+
+            double ratingMultiplier = 1.0;
+
+            double approachRateLengthBonus = 0.95 + 0.4 * Math.Min(1.0, totalHits / 2000.0) +
+                                             (totalHits > 2000 ? Math.Log10(totalHits / 2000.0) * 0.5 : 0.0);
+
+            double approachRateFactor = 0.0;
+            if (approachRate > 10.33)
+                approachRateFactor = 0.3 * (approachRate - 10.33);
+            else if (approachRate < 8.0)
+                approachRateFactor = 0.05 * (8.0 - approachRate);
+
+            if (mods.Any(h => h is OsuModRelax))
+                approachRateFactor = 0.0;
+
+            ratingMultiplier += approachRateFactor * approachRateLengthBonus; // Buff for longer maps with high AR.
+
+            if (mods.Any(m => m is OsuModHidden))
+            {
+                double visibilityFactor = calculateAimVisibilityFactor(approachRate);
+                ratingMultiplier += CalculateVisibilityBonus(mods, approachRate, visibilityFactor);
+            }
+
+            // It is important to consider accuracy difficulty when scaling with accuracy.
+            ratingMultiplier *= 0.98 + Math.Pow(Math.Max(0, overallDifficulty), 2) / 2500;
+
+            return altRating * Math.Cbrt(ratingMultiplier);
+        }
+
         public double ComputeFlashlightRating(double flashlightDifficultyValue)
         {
             if (!mods.Any(m => m is OsuModFlashlight))

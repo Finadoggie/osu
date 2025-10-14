@@ -2,9 +2,12 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
+using osu.Game.Rulesets.Osu.Difficulty.Utils;
+using osu.Game.Rulesets.Osu.Objects;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
@@ -15,10 +18,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        private double skillMultiplier => 1;
+        private double skillMultiplier => 40;
         private double strainDecayBase => 0.225;
 
         private double currentStrain;
+
+        private readonly List<double> sliderStrains = new List<double>();
 
         protected override int ReducedSectionCount => 7;
 
@@ -31,7 +36,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             currentStrain *= strainDecay(current.DeltaTime);
             currentStrain += AltEvaluator.EvaluateDifficultyOf(current) * skillMultiplier;
 
+            if (current.BaseObject is Slider)
+                sliderStrains.Add(currentStrain);
+
             return currentStrain;
         }
+
+        public double CountTopWeightedSliders() => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, DifficultyValue());
     }
 }

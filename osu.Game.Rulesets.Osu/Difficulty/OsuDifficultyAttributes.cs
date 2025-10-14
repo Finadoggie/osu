@@ -39,6 +39,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("speed_note_count")]
         public double SpeedNoteCount { get; set; }
 
+        [JsonProperty("alt_difficulty")]
+        public double AltDifficulty { get; set; }
+
         /// <summary>
         /// The difficulty corresponding to the flashlight skill.
         /// </summary>
@@ -69,11 +72,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("speed_top_weighted_slider_factor")]
         public double SpeedTopWeightedSliderFactor { get; set; }
 
+        [JsonProperty("alt_top_weighted_slider_factor")]
+        public double AltTopWeightedSliderFactor { get; set; }
+
         [JsonProperty("aim_difficult_strain_count")]
         public double AimDifficultStrainCount { get; set; }
 
         [JsonProperty("speed_difficult_strain_count")]
         public double SpeedDifficultStrainCount { get; set; }
+
+        [JsonProperty("alt_difficult_strain_count")]
+        public double AltDifficultStrainCount { get; set; }
 
         [JsonProperty("nested_score_per_object")]
         public double NestedScorePerObject { get; set; }
