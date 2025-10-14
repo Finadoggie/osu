@@ -25,7 +25,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double currDistanceDifference = Math.Abs(osuCurrObj.LazyJumpDistance - osuPrevObj.LazyJumpDistance);
             double prevDistanceDifference = Math.Abs(osuPrevObj.LazyJumpDistance - osuPrev2Obj.LazyJumpDistance);
 
-            double jerk = Math.Abs(currDistanceDifference - prevDistanceDifference) / 15;
+            double jerk = Math.Sqrt(Math.Max(0, Math.Abs(currDistanceDifference - prevDistanceDifference) - 5) / 5);
 
             int i = 0;
             var loopObj = osuCurrObj;
@@ -65,7 +65,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Value distance exponentially
             double difficulty = Math.Pow(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance, 2) / osuCurrObj.AdjustedDeltaTime;
 
-            difficulty += (osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime) * antiFlowBonus * 50;
+            difficulty += (osuCurrObj.LazyJumpDistance / osuCurrObj.AdjustedDeltaTime) * antiFlowBonus * 70;
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
