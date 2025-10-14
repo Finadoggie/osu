@@ -18,7 +18,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private const double single_spacing_threshold = OsuDifficultyHitObject.NORMALISED_DIAMETER * 1.25; // 1.25 circles distance between centers
         private const double min_speed_bonus = 200; // 200 BPM 1/4th
         private const double speed_balancing_factor = 40;
-        private const double distance_multiplier = 0.7;
+        private const double distance_multiplier = 0.8;
 
         /// <summary>
         /// Evaluates the difficulty of tapping the current object, based on:
@@ -66,11 +66,48 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (mods.OfType<OsuModAutopilot>().Any())
                 distanceBonus = 0;
 
+            distanceBonus *= calcCircleStreamNerf(osuCurrObj);
+
             // Base difficulty with all bonuses
             double difficulty = (1 + speedBonus + distanceBonus) * 1000 / strainTime;
 
             // Apply penalty if there's doubletappable doubles
             return difficulty * doubletapness;
         }
+
+        private static double calcCircleStreamNerf(OsuDifficultyHitObject osuCurrObj)
+        {
+            if (osuCurrObj.SignedAngle is null || osuCurrObj.Index <= 1) return 1;
+
+            const double base_angle_nerf = 0.8;
+            const double taper_off = 0.9;
+
+            double angleNerf = 1 - base_angle_nerf;
+            double mult = 1;
+
+            double prevSignedAngle = osuCurrObj.SignedAngle.Value;
+
+            for (int i = 0; i < Math.Min(osuCurrObj.Index, 8); i++)
+            {
+                OsuDifficultyHitObject objBeingChecked = (OsuDifficultyHitObject)osuCurrObj.Previous(i);
+                if (objBeingChecked.Angle is null || objBeingChecked.SignedAngle is null) break;
+
+                double angle = objBeingChecked.Angle.Value;
+                double signedAngle = objBeingChecked.SignedAngle.Value;
+
+                // Reduce nerf extra when angles have a high difference since those aren't circles
+                angleNerf *= 1 - Math.Min(Math.Pow(Math.Abs(signedAngle - prevSignedAngle) / double.DegreesToRadians(30), 3), 1);
+
+                mult *= 1 - angleNerf * calcAngleNerf(angle);
+                // Reduce nerf per object
+                angleNerf *= taper_off;
+
+                prevSignedAngle = signedAngle;
+            }
+
+            return mult;
+        }
+
+        private static double calcAngleNerf(double angle) => DifficultyCalculationUtils.SmoothstepBellCurve(angle, double.DegreesToRadians(150), 30);
     }
 }

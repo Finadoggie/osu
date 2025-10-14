@@ -101,6 +101,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double? Angle { get; private set; }
 
         /// <summary>
+        /// <see cref="OsuDifficultyHitObject.Angle"/> but signed.
+        /// </summary>
+        public double? SignedAngle { get; set; }
+
+        /// <summary>
         /// Retrieves the full hit window for a Great <see cref="HitResult"/>.
         /// </summary>
         public double HitWindowGreat { get; private set; }
@@ -247,7 +252,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 float dot = Vector2.Dot(v1, v2);
                 float det = v1.X * v2.Y - v1.Y * v2.X;
 
-                Angle = Math.Abs(Math.Atan2(det, dot));
+                SignedAngle = Math.Atan2(det, dot);
+                Angle = Math.Abs(SignedAngle.Value);
             }
         }
 
