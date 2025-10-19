@@ -197,6 +197,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 TravelDistance = LazyTravelDistance * Math.Pow(1 + currentSlider.RepeatCount / 2.5, 1.0 / 2.5);
                 TravelTime = Math.Max(LazyTravelTime / clockRate, MIN_DELTA_TIME);
             }
+            else
+            {
+                TravelDistance = 0;
+                TravelTime = 0;
+            }
 
             // We don't need to calculate either angle or distance when one of the last->curr objects is a spinner
             if (BaseObject is Spinner || LastObject is Spinner)
@@ -210,7 +215,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             HeadDistance = (BaseObject.StackedPosition - LastObject.StackedPosition).Length * scalingFactor;
             LazyJumpDistance = (BaseObject.StackedPosition * scalingFactor - lastCursorPosition * scalingFactor).Length;
             MinimumJumpTime = AdjustedDeltaTime;
-            MinimumJumpDistance = HeadDistance;
+            MinimumJumpDistance = LazyJumpDistance;
 
             if (LastObject is Slider lastSlider && lastDifficultyObject != null)
             {
@@ -240,7 +245,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 //
 
                 float tailJumpDistance = Vector2.Subtract(lastSlider.TailCircle.StackedPosition, BaseObject.StackedPosition).Length * scalingFactor;
-                MinimumJumpDistance = Math.Max(0, Math.Min(HeadDistance - (maximum_slider_radius - assumed_slider_radius), tailJumpDistance - maximum_slider_radius));
+                MinimumJumpDistance = Math.Max(0, Math.Min(LazyJumpDistance - (maximum_slider_radius - assumed_slider_radius), tailJumpDistance - maximum_slider_radius));
             }
 
             if (lastLastDifficultyObject != null && lastLastDifficultyObject.BaseObject is not Spinner)
