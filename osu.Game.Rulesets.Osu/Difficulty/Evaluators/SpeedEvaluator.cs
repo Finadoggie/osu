@@ -53,6 +53,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             double travelDistance = osuPrevObj?.TravelDistance ?? 0;
             double distance = travelDistance + osuCurrObj.MinimumJumpDistance;
+            distance = Math.Max(distance, osuCurrObj.HeadDistance);
 
             // Cap distance at single_spacing_threshold
             distance = Math.Min(distance, single_spacing_threshold);
