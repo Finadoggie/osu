@@ -128,8 +128,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             if (Math.Max(prevVelocity, currVelocity) != 0)
             {
                 // We want to use the average velocity over the whole object when awarding differences, not the individual jump and slider path velocities.
-                prevVelocity = (osuLastObj.HeadDistance + osuLastLastObj.TravelDistance) / osuLastObj.AdjustedDeltaTime;
-                currVelocity = (osuCurrObj.HeadDistance + osuLastObj.TravelDistance) / osuCurrObj.AdjustedDeltaTime;
+                prevVelocity = Math.Max(osuLastObj.LazyJumpDistance + osuLastLastObj.TravelDistance, osuLastObj.HeadDistance) / osuLastObj.AdjustedDeltaTime;
+                currVelocity = Math.Max(osuCurrObj.LazyJumpDistance + osuLastObj.TravelDistance, osuCurrObj.HeadDistance) / osuCurrObj.AdjustedDeltaTime;
 
                 // Scale with ratio of difference compared to 0.5 * max dist.
                 double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity), 0, 1);
