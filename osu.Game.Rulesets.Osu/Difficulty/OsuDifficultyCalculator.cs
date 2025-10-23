@@ -133,6 +133,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 AimTopWeightedSliderFactor = aimTopWeightedSliderFactor,
                 SpeedTopWeightedSliderFactor = speedTopWeightedSliderFactor,
                 AimLengthBonus = aim.LengthBonus(),
+                SpeedLengthBonus = speed.LengthBonus(),
                 DrainRate = drainRate,
                 MaxCombo = beatmap.GetMaxCombo(),
                 HitCircleCount = hitCircleCount,
