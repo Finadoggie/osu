@@ -75,6 +75,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("speed_difficult_strain_count")]
         public double SpeedDifficultStrainCount { get; set; }
 
+        [JsonProperty("aim_length_bonus")]
+        public double AimLengthBonus { get; set; }
+
         [JsonProperty("nested_score_per_object")]
         public double NestedScorePerObject { get; set; }
 

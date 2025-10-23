@@ -57,6 +57,46 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return difficulty;
         }
 
+        public double LengthBonus()
+        {
+            double bonus = 0; // 0.95 * DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(DifficultyValue()));
+
+            // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
+            // These sections will not contribute to the difficulty.
+            var peaks = GetCurrentStrainPeaks().Where(p => p > 0);
+
+            List<double> strains = peaks.OrderDescending().ToList();
+
+            // We are reducing the highest strains first to account for extreme difficulty spikes
+            for (int i = 0; i < Math.Min(strains.Count, ReducedSectionCount); i++)
+            {
+                double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)i / ReducedSectionCount, 0, 1)));
+                strains[i] *= Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale);
+            }
+
+            strains = strains.OrderDescending().ToList();
+
+            for (int i = 0; i < strains.Count; i++)
+            {
+                double difficulty = 0;
+                double weight = 1;
+
+                for (int j = i; j < Math.Min(strains.Count, i + 100); j++)
+                {
+                    difficulty += strains[j] * weight;
+                    weight *= DecayWeight;
+                }
+
+                double currBonus = DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(difficulty)) * lengthBonusMultiplier(i);
+                double prevBonus = DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(difficulty)) * lengthBonusMultiplier(i - 1);
+
+                bonus += Math.Max(currBonus - prevBonus, 0);
+            }
+
+            return bonus;
+        }
+
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
+        private static double lengthBonusMultiplier(double strains) => 0.95 + 0.4 * Math.Min(1.0, strains / 500.0) + (strains > 500 ? Math.Log10(strains / 500.0) * 0.5 : 0.0);
     }
 }
