@@ -28,11 +28,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        public override double DifficultyValue()
+        public IEnumerable<double> GetReducedStrains()
         {
-            double difficulty = 0;
-            double weight = 1;
-
             // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
             // These sections will not contribute to the difficulty.
             var peaks = GetCurrentStrainPeaks().Where(p => p > 0);
@@ -46,9 +43,19 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 strains[i] *= Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale);
             }
 
+            return strains.OrderDescending();
+        }
+
+        public override double DifficultyValue()
+        {
+            double difficulty = 0;
+            double weight = 1;
+
+            var strains = GetReducedStrains();
+
             // Difficulty is the weighted sum of the highest strains from every section.
             // We're sorting from highest to lowest strain.
-            foreach (double strain in strains.OrderDescending())
+            foreach (double strain in strains)
             {
                 difficulty += strain * weight;
                 weight *= DecayWeight;
@@ -61,20 +68,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
             double bonus = 0;
 
-            // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
-            // These sections will not contribute to the difficulty.
-            var peaks = GetCurrentStrainPeaks().Where(p => p > 0);
-
-            List<double> strains = peaks.OrderDescending().ToList();
-
-            // We are reducing the highest strains first to account for extreme difficulty spikes
-            for (int i = 0; i < Math.Min(strains.Count, ReducedSectionCount); i++)
-            {
-                double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)i / ReducedSectionCount, 0, 1)));
-                strains[i] *= Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale);
-            }
-
-            strains = strains.OrderDescending().ToList();
+            List<double> strains = GetReducedStrains().ToList();
 
             for (int i = 0; i < strains.Count; i++)
             {
@@ -87,10 +81,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                     weight *= DecayWeight;
                 }
 
-                double currBonus = DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(difficulty)) * lengthBonusMultiplier(i);
-                double prevBonus = DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(difficulty)) * lengthBonusMultiplier(i - 1);
+                double performance = DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(difficulty));
 
-                bonus += Math.Max(currBonus - prevBonus, 0);
+                double currStrainBonus = performance * (lengthBonusMultiplier(i) - lengthBonusMultiplier(i - 1));
+
+                bonus += currStrainBonus;
             }
 
             return bonus * 1.727; // Multiplier to increase importance of length bonus
