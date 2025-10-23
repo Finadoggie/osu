@@ -84,7 +84,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             {
                 currentDifficulty = snapDifficulty;
                 currentAgilityStrain += agilityDifficulty;
-                currentStrain += (currentDifficulty + currentAgilityStrain) * aimMultiplier;
+                currentStrain += currentDifficulty * aimMultiplier + currentAgilityStrain;
             }
 
             if (current.BaseObject is Slider)

@@ -28,22 +28,22 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double currAngle = osuCurrObj.Angle.Value;
                 double lastAngle = osuPrevObj.Angle.Value;
 
-                wideBonus += calcWideAngleBonus(currAngle) * 0.5;
+                wideBonus += calcWideAngleBonus(currAngle) * 0.4;
 
-                baseFactor = 1 - 0.25 * DifficultyCalculationUtils.Smoothstep(lastAngle, double.DegreesToRadians(90), double.DegreesToRadians(40)) * angleDifference(currAngle, lastAngle);
+                baseFactor = 1 - 0.3 * DifficultyCalculationUtils.Smoothstep(lastAngle, double.DegreesToRadians(90), double.DegreesToRadians(40)) * angleDifference(currAngle, lastAngle);
             }
 
             // Penalize angle repetition.
             double angleRepetitionNerf = Math.Pow(baseFactor + (1 - baseFactor) * angleVectorRepetition(osuCurrObj), 2);
 
             // Agility bonus of 1 at base BPM.
-            double agilityBonus = Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(osuCurrObj.AdjustedDeltaTime, 2) / (270.0 / wideBonus), 4.0) - 1);
+            double agilityBonus = Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(osuCurrObj.AdjustedDeltaTime, 2) / (270.0 / wideBonus), 4.5) - 1);
 
             double difficulty = agilityBonus * angleRepetitionNerf;
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
-            return difficulty * 1.0;
+            return difficulty * 1.4;
         }
 
         private static double angleDifference(double curAngle, double lastAngle)
