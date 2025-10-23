@@ -20,6 +20,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             var osuCurrObj = (OsuDifficultyHitObject)current;
             var osuPrevObj = (OsuDifficultyHitObject)current.Previous(0);
 
+            double prevDistanceMultiplier = DifficultyCalculationUtils.Smootherstep(osuPrevObj.LazyJumpDistance / OsuDifficultyHitObject.NORMALISED_RADIUS, 0.5, 1);
+
+            // If the previous notes are stacked, we add the previous note's strainTime since there was no movement since at least 2 notes earlier.
+            // https://youtu.be/-yJPIk-YSLI?t=186
+            double currTime = osuCurrObj.AdjustedDeltaTime + osuPrevObj.AdjustedDeltaTime * (1 - prevDistanceMultiplier);
+            double prevTime = osuPrevObj.AdjustedDeltaTime;
+
             double baseFactor = 1;
             double wideBonus = 1;
 
@@ -37,7 +44,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double angleRepetitionNerf = Math.Pow(baseFactor + (1 - baseFactor) * angleVectorRepetition(osuCurrObj), 2);
 
             // Agility bonus of 1 at base BPM.
-            double agilityBonus = Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(osuCurrObj.AdjustedDeltaTime, 2) / (270.0 / wideBonus), 4.5) - 1);
+            double agilityBonus = Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(Math.Max(currTime, prevTime), 2) / (270.0 / wideBonus), 4.5) - 1);
 
             double difficulty = agilityBonus * angleRepetitionNerf;
 
