@@ -196,6 +196,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double aimValue = OsuStrainSkill.DifficultyToPerformance(aimDifficulty);
 
+            // Take away some performance before adding length bonus
+            aimValue *= 0.95;
             aimValue += attributes.AimLengthBonus;
 
             if (effectiveMissCount > 0)
@@ -227,6 +229,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double speedValue = OsuStrainSkill.DifficultyToPerformance(attributes.SpeedDifficulty);
 
+            // Take away some performance before adding length bonus
+            speedValue *= 0.95;
             speedValue += attributes.SpeedLengthBonus;
 
             if (effectiveMissCount > 0)

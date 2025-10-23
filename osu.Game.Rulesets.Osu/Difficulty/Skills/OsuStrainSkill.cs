@@ -57,9 +57,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return difficulty;
         }
 
-        public double LengthBonus()
+        public double PerformanceLengthBonus()
         {
-            double bonus = 0; // 0.95 * DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(DifficultyValue()));
+            double bonus = 0;
 
             // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
             // These sections will not contribute to the difficulty.
@@ -93,10 +93,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 bonus += Math.Max(currBonus - prevBonus, 0);
             }
 
-            return bonus;
+            return bonus * 1.727; // Multiplier to increase importance of length bonus
         }
 
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
-        private static double lengthBonusMultiplier(double strains) => 0.95 + 0.4 * Math.Min(1.0, strains / 500.0) + (strains > 500 ? Math.Log10(strains / 500.0) * 0.5 : 0.0);
+        private static double lengthBonusMultiplier(double strains) => 0.4 * Math.Min(1.0, strains / 500.0) + (strains > 500 ? Math.Log10(strains / 500.0) * 0.5 : 0.0);
     }
 }
