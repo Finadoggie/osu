@@ -100,6 +100,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 flashlightRating = osuRatingCalculator.ComputeFlashlightRating(flashlight.DifficultyValue());
 
             double aimLengthBonus = OsuRatingCalculator.CalculateLengthBonus(aim, osuRatingCalculator.ComputeAimRating);
+            double aimNoSlidersLengthBonus = OsuRatingCalculator.CalculateLengthBonus(aimWithoutSliders, osuRatingCalculator.ComputeAimRating);
+            double lengthBonusSliderFactor = aimLengthBonus > 0 ? aimNoSlidersLengthBonus / aimLengthBonus : 1;
             double speedLengthBonus = OsuRatingCalculator.CalculateLengthBonus(speed, osuRatingCalculator.ComputeSpeedRating);
 
             double sliderNestedScorePerObject = LegacyScoreUtils.CalculateNestedScorePerObject(beatmap, totalHits);
@@ -137,6 +139,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 SpeedTopWeightedSliderFactor = speedTopWeightedSliderFactor,
                 AimLengthBonus = aimLengthBonus,
                 SpeedLengthBonus = speedLengthBonus,
+                LengthBonusSliderFactor = lengthBonusSliderFactor,
                 DrainRate = drainRate,
                 MaxCombo = beatmap.GetMaxCombo(),
                 HitCircleCount = hitCircleCount,
