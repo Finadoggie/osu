@@ -64,36 +64,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return difficulty;
         }
 
-        public double PerformanceLengthBonus()
-        {
-            double bonus = 0;
-
-            List<double> strains = GetReducedStrains().ToList();
-
-            for (int i = 0; i < strains.Count; i++)
-            {
-                double difficulty = 0;
-                double weight = 1;
-
-                for (int j = i; j < Math.Min(strains.Count, i + 100); j++)
-                {
-                    difficulty += strains[j] * weight;
-                    weight *= DecayWeight;
-                }
-
-                double performance = DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(difficulty));
-
-                double currStrainBonus = performance * (lengthBonusMultiplier(i) - lengthBonusMultiplier(i - 1));
-
-                bonus += currStrainBonus;
-            }
-
-            return bonus * 0.61;
-        }
-
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
 
         // https://www.desmos.com/calculator/secrjaywao
-        private static double lengthBonusMultiplier(double strains) => Math.Min(0.5, strains / 500.0) + (strains > 250 ? Math.Log(strains / 500.0 + 0.5) : 0.0);
+        public static double LengthBonusMultiplier(double strains) => Math.Min(0.5, strains / 500.0) + (strains > 250 ? Math.Log(strains / 500.0 + 0.5) : 0.0);
     }
 }
