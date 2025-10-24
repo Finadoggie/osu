@@ -88,10 +88,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 bonus += currStrainBonus;
             }
 
-            return bonus * 1.727; // Multiplier to increase importance of length bonus
+            return bonus * 0.61;
         }
 
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
-        private static double lengthBonusMultiplier(double strains) => 0.4 * Math.Min(1.0, strains / 500.0) + (strains > 500 ? Math.Log10(strains / 500.0) * 0.5 : 0.0);
+
+        // https://www.desmos.com/calculator/secrjaywao
+        private static double lengthBonusMultiplier(double strains) => Math.Min(0.5, strains / 500.0) + (strains > 250 ? Math.Log(strains / 500.0 + 0.5) : 0.0);
     }
 }
