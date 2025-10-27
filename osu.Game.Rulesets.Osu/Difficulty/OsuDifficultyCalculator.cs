@@ -110,8 +110,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             var simulator = new OsuLegacyScoreSimulator();
             var scoreAttributes = simulator.Simulate(WorkingBeatmap, beatmap);
 
-            double baseAimPerformance = OsuStrainSkill.DifficultyToPerformance(aimRating);
-            double baseSpeedPerformance = OsuStrainSkill.DifficultyToPerformance(speedRating);
+            double baseAimPerformance = OsuStrainSkill.DifficultyToPerformance(aimRating) * 0.95 + aimLengthBonus;
+            double baseSpeedPerformance = OsuStrainSkill.DifficultyToPerformance(speedRating) * 0.95 + speedLengthBonus;
             double baseFlashlightPerformance = Flashlight.DifficultyToPerformance(flashlightRating);
 
             double basePerformance =
