@@ -2,7 +2,6 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Mods;
@@ -216,7 +215,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             var strains = skill.GetObjectStrains().Where(p => p > 0).OrderDescending();
 
-            int i = 0;
+            int i = 1;
 
             foreach (double strain in strains)
             {
