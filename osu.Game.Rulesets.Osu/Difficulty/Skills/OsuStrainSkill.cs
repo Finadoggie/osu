@@ -67,6 +67,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
 
         // https://www.desmos.com/calculator/secrjaywao
-        public static double LengthBonusMultiplier(double strains) => Math.Log(Math.Sqrt(strains + 1));
+        public static double LengthBonusMultiplier(double strains) => Math.Log(Math.Sqrt(strains * 10 + 1));
     }
 }
