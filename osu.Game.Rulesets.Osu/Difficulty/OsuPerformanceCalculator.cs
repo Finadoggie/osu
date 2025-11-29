@@ -109,7 +109,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             else
             {
                 // Use combo-based miss count if this isn't a legacy score
-                effectiveMissCount = comboBasedEstimatedMissCount;
+                effectiveMissCount += countSliderTickMiss;
             }
 
             effectiveMissCount = Math.Max(countMiss, effectiveMissCount);
@@ -187,7 +187,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 {
                     // We add tick misses here since they too mean that the player didn't follow the slider properly
                     // We however aren't adding misses here because missing slider heads has a harsh penalty by itself and doesn't mean that the rest of the slider wasn't followed properly
-                    estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped + countSliderTickMiss, 0, attributes.AimDifficultSliderCount);
+                    estimateImproperlyFollowedDifficultSliders = Math.Clamp(countSliderEndsDropped, 0, attributes.AimDifficultSliderCount);
                 }
 
                 double sliderNerfFactor = (1 - attributes.SliderFactor) * Math.Pow(1 - estimateImproperlyFollowedDifficultSliders / attributes.AimDifficultSliderCount, 3) + attributes.SliderFactor;
@@ -204,9 +204,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 aimEstimatedSliderBreaks = calculateEstimatedSliderBreaks(attributes.AimTopWeightedSliderFactor, attributes);
 
-                double relevantMissCount = Math.Min(effectiveMissCount + aimEstimatedSliderBreaks, totalImperfectHits + countSliderTickMiss);
+                double relevantMissCount = effectiveMissCount + aimEstimatedSliderBreaks;
 
-                aimValue *= calculateMissPenalty(relevantMissCount, attributes.AimDifficultStrainCount);
+                aimValue *= calculateMissPenalty(relevantMissCount, attributes.AimDifficultStrainCount + attributes.AimDifficultSliderCount);
             }
 
             // TC bonuses are excluded when blinds is present as the increased visual difficulty is unimportant when notes cannot be seen.
@@ -237,7 +237,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             {
                 speedEstimatedSliderBreaks = calculateEstimatedSliderBreaks(attributes.SpeedTopWeightedSliderFactor, attributes);
 
-                double relevantMissCount = Math.Min(effectiveMissCount + speedEstimatedSliderBreaks, totalImperfectHits + countSliderTickMiss);
+                double relevantMissCount = effectiveMissCount + speedEstimatedSliderBreaks;
 
                 speedValue *= calculateMissPenalty(relevantMissCount, attributes.SpeedDifficultStrainCount);
             }
