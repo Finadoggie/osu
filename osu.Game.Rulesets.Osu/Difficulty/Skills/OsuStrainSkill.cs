@@ -4,14 +4,13 @@
 using System;
 using osu.Game.Rulesets.Mods;
 using System.Linq;
-using osu.Framework.Utils;
 using osu.Game.Rulesets.Difficulty.Skills;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
     public abstract class OsuStrainSkill : ContinuousStrainSkill
     {
-        protected override double DifficultyMultiplier => 1.27;
+        protected override double DifficultyMultiplier => 1.13;
 
         /// <summary>
         /// The number of sections with the highest strains, which the peak strain reductions will apply to.
@@ -42,24 +41,24 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double totalTime = 0;
 
             // Peak strain reduction
-            for (int i = 0; i < sortedStrains.Count - 1; i++)
-            {
-                var current = sortedStrains[i];
-                var next = sortedStrains[i + 1];
-                frequency += current.StrainCountChange;
-
-                if (frequency > 0 && current.Strain > 0 && totalTime < ReducedSectionCount * SectionLength)
-                {
-                    totalTime += Math.Log(next.Strain / current.Strain) * (frequency / strainDecayRate);
-
-                    double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)totalTime / (ReducedSectionCount * SectionLength), 0, 1)));
-                    sortedStrains[i] = new StrainValue
-                    {
-                        Strain = current.Strain * Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale),
-                        StrainCountChange = current.StrainCountChange
-                    };
-                }
-            }
+            // for (int i = 0; i < sortedStrains.Count - 1; i++)
+            // {
+            //     var current = sortedStrains[i];
+            //     var next = sortedStrains[i + 1];
+            //     frequency += current.StrainCountChange;
+            //
+            //     if (frequency > 0 && current.Strain > 0 && totalTime < ReducedSectionCount * SectionLength)
+            //     {
+            //         totalTime += Math.Log(next.Strain / current.Strain) * (frequency / strainDecayRate);
+            //
+            //         double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)totalTime / (ReducedSectionCount * SectionLength), 0, 1)));
+            //         sortedStrains[i] = new StrainValue
+            //         {
+            //             Strain = current.Strain * Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale),
+            //             StrainCountChange = current.StrainCountChange
+            //         };
+            //     }
+            // }
 
             frequency = 0;
 
