@@ -2,16 +2,17 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
-using osu.Game.Rulesets.Difficulty.Skills;
 using osu.Game.Rulesets.Mods;
 using System.Linq;
 using osu.Framework.Utils;
+using osu.Game.Rulesets.Difficulty.Skills;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
-    public abstract class OsuStrainSkill : StrainSkill
+    public abstract class OsuStrainSkill : ContinuousStrainSkill
     {
+        protected override double DifficultyMultiplier => 1.27;
+
         /// <summary>
         /// The number of sections with the highest strains, which the peak strain reductions will apply to.
         /// This is done in order to decrease their impact on the overall difficulty of the map for this skill.
@@ -30,31 +31,59 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         public override double DifficultyValue()
         {
-            double difficulty = 0;
-            double weight = 1;
+            double result = 0.0;
+            double currentWeight = 1;
+            double frequency = 0;
+            var sortedStrains = Strains.OrderByDescending(x => (x.Strain, x.StrainCountChange)).ToList();
 
-            // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
-            // These sections will not contribute to the difficulty.
-            var peaks = GetCurrentStrainPeaks().Where(p => p > 0);
+            double strainDecayRate = Math.Log(StrainDecayBase) / 1000;
+            double sumDecayRate = Math.Log(DecayWeight) / SectionLength;
 
-            List<double> strains = peaks.OrderDescending().ToList();
+            double totalTime = 0;
 
-            // We are reducing the highest strains first to account for extreme difficulty spikes
-            for (int i = 0; i < Math.Min(strains.Count, ReducedSectionCount); i++)
+            // Peak strain reduction
+            for (int i = 0; i < sortedStrains.Count - 1; i++)
             {
-                double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)i / ReducedSectionCount, 0, 1)));
-                strains[i] *= Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale);
+                var current = sortedStrains[i];
+                var next = sortedStrains[i + 1];
+                frequency += current.StrainCountChange;
+
+                if (frequency > 0 && current.Strain > 0 && totalTime < ReducedSectionCount * SectionLength)
+                {
+                    totalTime += Math.Log(next.Strain / current.Strain) * (frequency / strainDecayRate);
+
+                    double scale = Math.Log10(Interpolation.Lerp(1, 10, Math.Clamp((float)totalTime / (ReducedSectionCount * SectionLength), 0, 1)));
+                    sortedStrains[i] = new StrainValue
+                    {
+                        Strain = current.Strain * Interpolation.Lerp(ReducedStrainBaseline, 1.0, scale),
+                        StrainCountChange = current.StrainCountChange
+                    };
+                }
             }
 
-            // Difficulty is the weighted sum of the highest strains from every section.
-            // We're sorting from highest to lowest strain.
-            foreach (double strain in strains.OrderDescending())
+            frequency = 0;
+
+            // Resort strains after reducing beginning sections
+            sortedStrains = sortedStrains.OrderByDescending(x => (x.Strain, x.StrainCountChange)).ToList();
+
+            for (int i = 0; i < sortedStrains.Count - 1; i++)
             {
-                difficulty += strain * weight;
-                weight *= DecayWeight;
+                var current = sortedStrains[i];
+                var next = sortedStrains[i + 1];
+                frequency += current.StrainCountChange;
+
+                if (frequency > 0 && current.Strain > 0)
+                {
+                    double time = Math.Log(next.Strain / current.Strain) * (frequency / strainDecayRate);
+
+                    double nextWeight = currentWeight * Math.Exp(sumDecayRate * time);
+                    double combinedDecay = SectionLength * (sumDecayRate + (strainDecayRate / frequency));
+                    result += (next.Strain * nextWeight - current.Strain * currentWeight) / combinedDecay;
+                    currentWeight = nextWeight;
+                }
             }
 
-            return difficulty;
+            return result * DifficultyMultiplier;
         }
 
         public static double DifficultyToPerformance(double difficulty) => Math.Pow(5.0 * Math.Max(1.0, difficulty / 0.0675) - 4.0, 3.0) / 100000.0;
