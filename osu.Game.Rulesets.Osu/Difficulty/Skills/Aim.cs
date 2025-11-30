@@ -26,12 +26,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         }
 
         private double currentStrain;
-        private double currentSnapStrain;
 
         private double currentAgilityStrain;
         private double aimMultiplier => 1.5;
-        private double strainDecayBase => 0.15;
-        private double agilityStrainDecayBase => 0.1;
+        private static double strainDecayBase => 0.15;
+        private static double agilityStrainDecayBase => 0.1;
 
         private static double flowDif;
 
@@ -55,48 +54,49 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         private readonly List<double> sliderStrains = new List<double>();
 
-        private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
-        private double strainDecayLimit(double deltaTime) => -1.0 / (Math.Pow(strainDecayBase, deltaTime / 1000.0) - 1.0);
+        public static double FlowMultiplier => 200;
 
-        private double agilityStrainDecay(double ms) => Math.Pow(agilityStrainDecayBase, ms / 1000);
-        private double agilityStrainDecayLimit(double deltaTime) => -1.0 / (Math.Pow(agilityStrainDecayBase, deltaTime / 1000.0) - 1.0);
+        private static double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
+        private static double strainDecayLimit(double deltaTime) => -1.0 / (Math.Pow(strainDecayBase, deltaTime / 1000.0) - 1.0);
+
+        private static double agilityStrainDecay(double ms) => Math.Pow(agilityStrainDecayBase, ms / 1000);
+        private static double agilityStrainDecayLimit(double deltaTime) => -1.0 / (Math.Pow(agilityStrainDecayBase, deltaTime / 1000.0) - 1.0);
 
         protected override double CalculateInitialStrain(double time, DifficultyHitObject current) => currentStrain * strainDecay(time - current.Previous(0).StartTime);
 
+        public static double GetSnapTheoretical(DifficultyHitObject current)
+        {
+            double snapEval = SnapAimEvaluator.EvaluateDifficultyOf(current, true);
+            double agilityEval = AgilityEvaluator.EvaluateDifficultyOf(current);
+            return snapEval + agilityEval;
+        }
+
         protected override double StrainValueAt(DifficultyHitObject current)
         {
-            currentSnapStrain *= strainDecay(current.DeltaTime);
+            currentStrain *= strainDecay(current.DeltaTime);
             currentAgilityStrain *= agilityStrainDecay(current.DeltaTime);
 
             double snapEval = SnapAimEvaluator.EvaluateDifficultyOf(current, IncludeSliders);
-            double flowEval = FlowAimEvaluator.EvaluateDifficultyOf(current);
+            double flowEval = FlowAimEvaluator.EvaluateDifficultyOf(current) * FlowMultiplier;
             double agilityEval = AgilityEvaluator.EvaluateDifficultyOf(current);
 
-            double snapDifficulty = snapEval * aimMultiplier;
-            double flowDifficulty = flowEval * aimMultiplier;
-
-            double snapTheoreticalDifficulty = snapDifficulty * strainDecayLimit(current.DeltaTime);
-            double agilityTheoreticalDifficulty = agilityEval * agilityStrainDecayLimit(current.DeltaTime);
-
-            bool isFlow = (flowDifficulty) < (snapTheoreticalDifficulty + agilityTheoreticalDifficulty);
+            bool isFlow = (flowEval) < (snapEval + agilityEval);
 
             flowDif = 0;
 
             double currentDifficulty;
-            currentStrain = currentSnapStrain + currentAgilityStrain;
 
             if (isFlow)
             {
-                currentDifficulty = flowDifficulty;
+                currentDifficulty = flowEval * aimMultiplier;
                 currentStrain = Math.Max(currentStrain, currentDifficulty);
                 flowDif = currentDifficulty;
             }
             else
             {
-                currentDifficulty = snapDifficulty;
-                currentStrain += currentDifficulty + agilityEval;
-                currentSnapStrain = currentStrain;
+                currentDifficulty = snapEval * aimMultiplier;
                 currentAgilityStrain += agilityEval;
+                currentStrain += currentDifficulty + currentAgilityStrain * aimMultiplier;
             }
 
             if (current.BaseObject is Slider)

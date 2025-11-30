@@ -22,48 +22,30 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             var osuPrevObj = (OsuDifficultyHitObject)current.Previous(0);
             var osuPrev2Obj = (OsuDifficultyHitObject)current.Previous(1);
 
-            double currDistanceDifference = Math.Abs(osuCurrObj.LazyJumpDistance - osuPrevObj.LazyJumpDistance);
-            double prevDistanceDifference = Math.Abs(osuPrevObj.LazyJumpDistance - osuPrev2Obj.LazyJumpDistance);
+            double currDistance = osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance;
+            double currTime = osuCurrObj.AdjustedDeltaTime;
+            double currVelocity = currDistance / currTime;
 
-            double jerk = Math.Sqrt(Math.Max(0, Math.Abs(currDistanceDifference - prevDistanceDifference) - 5) / 5);
+            double prevDistance = osuPrevObj.LazyJumpDistance + osuPrev2Obj.TravelDistance;
+            double prevTime = osuPrevObj.AdjustedDeltaTime;
+            double prevVelocity = prevDistance / prevTime;
 
-            int i = 0;
-            var loopObj = osuCurrObj;
-            double curAngleChange = directionChange(current);
 
-            double angleChangeSum = 0;
+            double difficulty = currVelocity;
 
-            while (i <= 6 && Math.Abs(osuCurrObj.AdjustedDeltaTime - loopObj.AdjustedDeltaTime) < 25)
+            double angleBonus = 0;
+
+            double angle = osuCurrObj.Angle ?? Math.PI;
+
+            if (Math.Max(prevVelocity, currVelocity) != 0)
             {
-                loopObj = (OsuDifficultyHitObject)osuCurrObj.Previous(i);
-
-                if (loopObj.IsNull())
-                    break;
-
-                angleChangeSum += directionChange(loopObj);
-                i++;
+                // Assume player cursor follows a circle
+                double circularVelocity = calculateCircularCursorPathDistance(angle, currDistance) / currTime;
+                double distRatio = Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity);
+                angleBonus = (circularVelocity - currVelocity) * distRatio;
             }
 
-            if (osuCurrObj.Angle.IsNotNull())
-            {
-                if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrevObj.AdjustedDeltaTime) > 25)
-                {
-                    jerk *= 0.1;
-                }
-
-                // Nerf the third note of bursts as its angle is not representative of its flow difficulty
-                if (Math.Abs(osuCurrObj.AdjustedDeltaTime - osuPrev2Obj.AdjustedDeltaTime) > 25)
-                {
-                    jerk *= 0.1 + calcAcuteAngleBonus(osuCurrObj.Angle.Value);
-                }
-            }
-
-            double averageDirectionChange = angleChangeSum / 15;
-
-            double antiFlowBonus = 0.9 + Math.Pow((jerk + curAngleChange + averageDirectionChange) / 3, 1.5) / 200;
-
-            // Value distance exponentially
-            double difficulty = (osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance) / osuCurrObj.AdjustedDeltaTime * antiFlowBonus;
+            difficulty += angleBonus; // If a multiplier is ever applied to angleBonus, it must be between 0 and 1
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
@@ -127,5 +109,27 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         }
 
         private static double calcAcuteAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(140), double.DegreesToRadians(70));
+
+        private static double calculateCircularCursorPathDistance(double angle, double distance)
+        {
+            // Case: Straight line
+            if (angle >= Math.PI)
+                return distance;
+
+            // Case: Straight back
+            if (angle <= 0)
+                return Math.PI * distance; // Distance = diameter in this case
+
+            // Case: Everything else
+            // Calculate radius of circle that cursor is assumed to follow
+            double a = Math.Cos(angle) * distance;
+            double b = Math.Sin(angle) * distance;
+            double q = distance / 2;
+            double p = distance / 2 * Math.Tan(angle / 2);
+            double r = Math.Sqrt(Math.Pow(q - a, 2) + Math.Pow(p - b, 2));
+
+            // Return segment of that circle encompassing the distance the cursor follows
+            return (1 - angle / Math.PI) * 2 * Math.PI * r;
+        }
     }
 }
