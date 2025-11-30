@@ -60,10 +60,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             double averageDirectionChange = angleChangeSum / 15;
 
-            double antiFlowBonus = 0.8 + Math.Pow((jerk + curAngleChange + averageDirectionChange) / 3, 1.5);
+            double antiFlowBonus = 0.9 + Math.Pow((jerk + curAngleChange + averageDirectionChange) / 3, 1.5) / 200;
 
             // Value distance exponentially
-            double difficulty = (Math.Pow(osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance, 2) / osuCurrObj.AdjustedDeltaTime) * antiFlowBonus;
+            double difficulty = (osuCurrObj.LazyJumpDistance + osuPrevObj.TravelDistance) / osuCurrObj.AdjustedDeltaTime * antiFlowBonus;
 
             difficulty *= osuCurrObj.SmallCircleBonus;
 
