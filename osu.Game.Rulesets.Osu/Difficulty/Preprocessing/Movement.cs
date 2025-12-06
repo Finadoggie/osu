@@ -17,14 +17,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public bool IsNested { get; set; }
 
         public double Time => Math.Max(EndTime - StartTime, OsuDifficultyHitObject.MIN_DELTA_TIME);
-        public double Distance => (End * (OsuDifficultyHitObject.NORMALISED_RADIUS / (float)Math.Max(StartRadius, EndRadius)) - Start * (OsuDifficultyHitObject.NORMALISED_RADIUS / (float)Math.Max(StartRadius, EndRadius))).Length;
+        public double Distance => (End * (OsuDifficultyHitObject.NORMALISED_RADIUS / (float)EndRadius) - Start * (OsuDifficultyHitObject.NORMALISED_RADIUS / (float)StartRadius)).Length;
 
         public override string ToString()
         {
             return $"{Start}->{End} ({Distance:N2}px, {Time:N2}ms)";
         }
 
-        public double Angle(Movement other)
+        public double Angle(Movement other, bool signed = false)
         {
             Vector2 v1 = other.Start - other.End;
             Vector2 v2 = End - Start;
@@ -32,7 +32,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             float dot = Vector2.Dot(v1, v2);
             float det = v1.X * v2.Y - v1.Y * v2.X;
 
-            return Math.Abs(Math.Atan2(det, dot));
+            double angle = Math.Atan2(det, dot);
+            return signed ? angle : Math.Abs(angle);
         }
     }
 }

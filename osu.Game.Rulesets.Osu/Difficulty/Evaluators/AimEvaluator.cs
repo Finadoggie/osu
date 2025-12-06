@@ -37,6 +37,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             var osuLastObj = (OsuDifficultyHitObject)current.Previous(0);
             var osuLastLastObj = (OsuDifficultyHitObject)current.Previous(1);
 
+            if (osuLastLastObj != null && osuLastLastObj.BaseObject is Spinner)
+                osuLastLastObj = null;
+
             double aimStrain = 0;
 
             var movementStrains = new List<double>();
@@ -55,7 +58,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                         ? osuLastObj.Movements[^2]
                         : osuLastLastObj?.Movements.LastOrDefault();
 
-                movementStrains.Add(calcMovementStrain(current, currentMovement, previousMovement, prevPrevMovement));
+                movementStrains.Add(calcMovementStrain(current, currentMovement, previousMovement, prevPrevMovement, indexOfMovement > 0));
             }
 
             if (withSliderTravelDistance)
@@ -75,6 +78,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             var osuLastObj = (OsuDifficultyHitObject)current.Previous(0);
             var osuLastLastObj = (OsuDifficultyHitObject)current.Previous(1);
 
+            if (osuLastLastObj != null && osuLastLastObj.BaseObject is Spinner)
+                osuLastLastObj = null;
+
             int indexOfMovement = osuCurrObj.Movements.IndexOf(currentMovement);
 
             var previousMovement = indexOfMovement > 0
@@ -87,16 +93,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     ? osuLastObj.Movements[^2]
                     : osuLastLastObj?.Movements.LastOrDefault();
 
-            return calcMovementStrain(current, currentMovement, previousMovement, prevPrevMovement);
+            return calcMovementStrain(current, currentMovement, previousMovement, prevPrevMovement, indexOfMovement > 0);
         }
 
-        private static double calcMovementStrain(DifficultyHitObject current, Movement currentMovement, Movement previousMovement, Movement? prevPrevMovement)
+        private static double calcMovementStrain(DifficultyHitObject current, Movement currentMovement, Movement previousMovement, Movement? prevPrevMovement, bool isNested)
         {
             const int radius = OsuDifficultyHitObject.NORMALISED_RADIUS;
             const int diameter = OsuDifficultyHitObject.NORMALISED_DIAMETER;
 
-            double currVelocity = currentMovement.Distance / (currentMovement.IsNested ? Math.Pow(currentMovement.Time, 0.8) : currentMovement.Time);
-            double prevVelocity = previousMovement.Distance / (previousMovement.IsNested ? Math.Pow(previousMovement.Time, 0.8) : previousMovement.Time);
+            double currVelocity = currentMovement.Distance / (currentMovement.IsNested ? Math.Pow(currentMovement.Time, 1) : currentMovement.Time);
+            double prevVelocity = previousMovement.Distance / (previousMovement.IsNested ? Math.Pow(previousMovement.Time, 1) : previousMovement.Time);
 
             double wideAngleBonus = 0;
             double acuteAngleBonus = 0;
@@ -188,14 +194,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
 
             // Apply high circle size bonus
-            var osuCurrObj = (OsuDifficultyHitObject)current;
-            aimStrain *= osuCurrObj.SmallCircleBonus;
+            if (!isNested)
+            {
+                var osuCurrObj = (OsuDifficultyHitObject)current;
+                aimStrain *= osuCurrObj.SmallCircleBonus;
+            }
 
             return aimStrain;
         }
 
-        private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));
+        private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(70), double.DegreesToRadians(110));
 
-        private static double calcAcuteAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(140), double.DegreesToRadians(40));
+        private static double calcAcuteAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(110), double.DegreesToRadians(70));
     }
 }
