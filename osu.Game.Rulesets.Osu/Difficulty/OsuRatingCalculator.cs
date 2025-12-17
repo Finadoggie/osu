@@ -2,8 +2,8 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
+using osu.Game.Rulesets.Difficulty.Skills;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu.Difficulty.Skills;
@@ -210,21 +210,23 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             return readingBonus;
         }
 
-        public static double CalculateLengthBonus(OsuStrainSkill skill, Func<double, double> calculateDifficultyRating)
+        public static double CalculateLengthBonus(OsuVariableLengthStrainSkill skill, Func<double, double> calculateDifficultyRating)
         {
             double bonus = 0;
 
-            List<double> strains = skill.GetReducedStrains().ToList();
+            var strains = skill.GetReducedStrains();
+            double time = -1;
 
-            for (int i = 0; i < strains.Count; i++)
+            foreach (VariableLengthStrainSkill.StrainPeak strain in strains)
             {
-                double difficulty = strains[i] * 10;
-                double performance = OsuStrainSkill.DifficultyToPerformance(calculateDifficultyRating(difficulty));
-                double multiplier = OsuStrainSkill.LengthBonusMultiplier(i) - OsuStrainSkill.LengthBonusMultiplier(i - 1);
+                double difficulty = strain.Value * 10;
+                double performance = OsuVariableLengthStrainSkill.DifficultyToPerformance(calculateDifficultyRating(difficulty));
+                double multiplier = OsuVariableLengthStrainSkill.LengthBonusMultiplier(time + (strain.SectionLength / skill.MaxSectionLength)) - OsuVariableLengthStrainSkill.LengthBonusMultiplier(time);
 
                 double currStrainBonus = performance * multiplier;
 
                 bonus += currStrainBonus;
+                time += strain.SectionLength / skill.MaxSectionLength;
             }
 
             return bonus * 0.58;

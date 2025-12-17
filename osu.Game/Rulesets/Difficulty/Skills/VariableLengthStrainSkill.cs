@@ -19,12 +19,12 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <summary>
         /// Multiplier applied to <see cref="DifficultyValue"/>
         /// </summary>
-        protected virtual double DifficultyMultiplier => 1;
+        public virtual double DifficultyMultiplier => 1;
 
         /// <summary>
         /// The weight by which each strain value decays.
         /// </summary>
-        protected virtual double DecayWeight => 0.9;
+        public virtual double DecayWeight => 0.9;
 
         /// <summary>
         /// Integral from 0 to infinity of DecayWeight^x dx
@@ -34,7 +34,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <summary>
         /// The maximum length of each strain section.
         /// </summary>
-        protected virtual int MaxSectionLength => 400;
+        public virtual int MaxSectionLength => 400;
 
         private double currentSectionPeak; // We also keep track of the peak strain in the current section.
         private double currentSectionBegin;
@@ -176,6 +176,9 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// </summary>
         private void saveCurrentPeak(double sectionLength)
         {
+            strainPeaks.Add(new StrainPeak(currentSectionPeak, sectionLength));
+            return;
+
             strainPeaks.AddInPlace(new StrainPeak(currentSectionPeak, sectionLength), strain_peak_comparer);
             totalLength += sectionLength;
 
