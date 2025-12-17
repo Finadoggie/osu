@@ -110,8 +110,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             var simulator = new OsuLegacyScoreSimulator();
             var scoreAttributes = simulator.Simulate(WorkingBeatmap, beatmap);
 
-            double baseAimPerformance = OsuStrainSkill.DifficultyToPerformance(aimRating) * 0.95 + aimLengthBonus;
-            double baseSpeedPerformance = OsuStrainSkill.DifficultyToPerformance(speedRating) * 0.95 + speedLengthBonus;
+            double baseAimPerformance = OsuVariableLengthStrainSkill.DifficultyToPerformance(aimRating) * 0.95 + aimLengthBonus;
+            double baseSpeedPerformance = OsuVariableLengthStrainSkill.DifficultyToPerformance(speedRating) * 0.95 + speedLengthBonus;
             double baseFlashlightPerformance = Flashlight.DifficultyToPerformance(flashlightRating);
 
             double basePerformance =
@@ -155,8 +155,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double calculateMechanicalDifficultyRating(double aimDifficultyValue, double speedDifficultyValue)
         {
-            double aimValue = OsuStrainSkill.DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(aimDifficultyValue));
-            double speedValue = OsuStrainSkill.DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(speedDifficultyValue));
+            double aimValue = OsuVariableLengthStrainSkill.DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(aimDifficultyValue));
+            double speedValue = OsuVariableLengthStrainSkill.DifficultyToPerformance(OsuRatingCalculator.CalculateDifficultyRating(speedDifficultyValue));
 
             double totalValue = Math.Pow(Math.Pow(aimValue, 1.1) + Math.Pow(speedValue, 1.1), 1 / 1.1);
 
