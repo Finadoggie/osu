@@ -218,15 +218,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             for (int i = 0; i < strains.Count; i++)
             {
-                double difficulty = 0;
-                double weight = 1;
-
-                for (int j = i; j < Math.Min(strains.Count, i + 100); j++)
-                {
-                    difficulty += strains[j] * weight;
-                    weight *= skill.DecayWeight;
-                }
-
+                double difficulty = strains[i] * 10;
                 double performance = OsuStrainSkill.DifficultyToPerformance(calculateDifficultyRating(difficulty));
                 double multiplier = OsuStrainSkill.LengthBonusMultiplier(i) - OsuStrainSkill.LengthBonusMultiplier(i - 1);
 
@@ -235,7 +227,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 bonus += currStrainBonus;
             }
 
-            return bonus * 0.61;
+            return bonus * 0.58;
         }
 
         public static double CalculateDifficultyRating(double difficultyValue) => Math.Sqrt(difficultyValue) * difficulty_multiplier;
