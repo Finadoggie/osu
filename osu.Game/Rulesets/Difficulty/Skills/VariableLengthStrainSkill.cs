@@ -172,6 +172,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         private void saveCurrentPeak(double sectionLength)
         {
             strainPeaks.AddInPlace(new StrainPeak(currentSectionPeak, sectionLength), strain_peak_comparer);
+            return;
             totalLength += sectionLength;
 
             // Remove from the back of our strain peaks if there's any which are too deep to contribute to difficulty.

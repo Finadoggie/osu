@@ -9,25 +9,21 @@ using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osu.Game.Rulesets.Osu.Objects;
 using System.Linq;
 using osu.Game.Rulesets.Difficulty.Skills;
-using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
+using osu.Game.Rulesets.Osu.Difficulty.Utils;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
     /// <summary>
     /// Represents the skill required to press keys with regards to keeping up with the speed at which objects need to be hit.
     /// </summary>
-    public class Speed : OsuVariableLengthStrainSkill
+    public class Speed : VariableLengthStrainSkill
     {
-        private double skillMultiplier => 0.98;
-
-        private readonly List<double> noteDifficulties = new List<double>();
+        private double skillMultiplier => 1.20;
 
         private readonly List<double> sliderStrains = new List<double>();
 
         private double currentDifficulty;
-
-        private double noteWeightSum;
 
         private double strainDecayBase => 0.3;
 
@@ -38,7 +34,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         private double strainDecay(double ms) => Math.Pow(strainDecayBase, ms / 1000);
 
-        public override void Process(DifficultyHitObject current)
+        protected override double StrainValueAt(DifficultyHitObject current)
         {
             currentDifficulty *= strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
             currentDifficulty += SpeedEvaluator.EvaluateDifficultyOf(current, Mods) * skillMultiplier;
@@ -50,83 +46,54 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (current.BaseObject is Slider)
                 sliderStrains.Add(totalDifficulty);
 
-            noteDifficulties.Add(totalDifficulty);
+            return totalDifficulty;
+        }
+
+        protected override double CalculateInitialStrain(double time, DifficultyHitObject current)
+        {
+            return 0;
         }
 
         public override double DifficultyValue()
         {
             double difficulty = 0;
 
-            // Notes with 0 difficulty are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
-            // These notes will not contribute to the difficulty.
-            var peaks = noteDifficulties.Where(p => p > 0);
+            // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
+            // These sections will not contribute to the difficulty.
+            var peaks = GetCurrentStrainPeaks().Where(p => p.Value > 0);
 
-            List<double> notes = peaks.ToList();
+            List<StrainPeak> strains = peaks.OrderByDescending(p => (p.Value, p.SectionLength)).ToList();
 
-            int index = 0;
+            // Time is measured in units of strains
+            double time = 0;
 
-            foreach (double note in notes.OrderDescending())
+            // Difficulty is a continuous weighted sum of the sorted strains
+            // https://www.desmos.com/calculator/lkc1wtryjz
+            for (int i = 0; i < strains.Count; i++)
             {
-                // Use a harmonic sum that considers each note of the map according to a predefined weight using arbitrary balancing constants.
-                // https://www.desmos.com/calculator/hfdpztcazs
-                double weight = (1.0 + (20.0 / (1 + index))) / (Math.Pow(index, 0.85) + 1.0 + (20.0 / (1.0 + index)));
-
-                noteWeightSum += weight;
-
-                difficulty += note * weight;
-                index += 1;
+                double weight = this.weight(time + strains[i].SectionLength / MaxSectionLength) - this.weight(time);
+                difficulty += strains[i].Value * weight;
+                time += strains[i].SectionLength / MaxSectionLength;
             }
 
             return difficulty;
         }
 
-        /// <summary>
-        /// Returns the number of relevant objects weighted against the top note.
-        /// </summary>
-        public double CountTopWeightedNotes(double difficultyValue)
-        {
-            if (noteDifficulties.Count == 0)
-                return 0.0;
-
-            if (noteWeightSum == 0)
-                return 0.0;
-
-            double consistentTopNote = difficultyValue / noteWeightSum; // What would the top note be if all note values were identical
-
-            if (consistentTopNote == 0)
-                return 0;
-
-            // Use a weighted sum of all notes. Constants are arbitrary and give nice values
-            return noteDifficulties.Sum(s => 1.1 / (1 + Math.Exp(-10 * (s / consistentTopNote - 0.88))));
-        }
-
         public double RelevantNoteCount()
         {
-            if (noteDifficulties.Count == 0)
+            if (ObjectStrains.Count == 0)
                 return 0;
 
-            double maxStrain = noteDifficulties.Max();
+            double maxStrain = ObjectStrains.Max();
             if (maxStrain == 0)
                 return 0;
 
-            return noteDifficulties.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxStrain * 12.0 - 6.0))));
+            return ObjectStrains.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxStrain * 12.0 - 6.0))));
         }
 
         public double CountTopWeightedSliders(double difficultyValue)
-        {
-            if (sliderStrains.Count == 0)
-                return 0;
+            => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, difficultyValue);
 
-            if (noteWeightSum == 0)
-                return 0.0;
-
-            double consistentTopNote = difficultyValue / noteWeightSum; // What would the top note be if all note values were identical
-
-            if (consistentTopNote == 0)
-                return 0;
-
-            // Use a weighted sum of all notes. Constants are arbitrary and give nice values
-            return sliderStrains.Sum(s => DifficultyCalculationUtils.Logistic(s / consistentTopNote, 0.88, 10, 1.1));
-        }
-    }
+        private double weight(double time) => (Math.Pow(Math.Log(time * 8 + 1), 2.32) * 0.134398398845 + Math.Log(Math.Pow(time * 8, 2.15) + 1) * 0.793690755297) / 2;
+}
 }
