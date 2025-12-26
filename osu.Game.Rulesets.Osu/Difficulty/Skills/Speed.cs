@@ -9,7 +9,7 @@ using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osu.Game.Rulesets.Osu.Objects;
 using System.Linq;
 using osu.Game.Rulesets.Difficulty.Skills;
-using osu.Game.Rulesets.Osu.Difficulty.Utils;
+using osu.Game.Rulesets.Difficulty.Utils;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
@@ -18,7 +18,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     /// </summary>
     public class Speed : Skill
     {
-        private double skillMultiplier => 1.37;
+        private double skillMultiplier => 0.8727;
 
         private readonly List<double> sliderStrains = new List<double>();
 
@@ -49,19 +49,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             notes.Add((totalDifficulty, current.DeltaTime, (current.BaseObject is Slider)));
         }
 
-        protected IEnumerable<VariableLengthStrainSkill.StrainPeak> GetCurrentStrainPeaks()
+        protected IEnumerable<double> GetCurrentStrainPeaks()
         {
-            List<VariableLengthStrainSkill.StrainPeak> strains = new List<VariableLengthStrainSkill.StrainPeak>();
+            List<double> strains = new List<double>();
             sliderStrains.Clear();
 
             double lastDeltaTime = 0;
             double lastValue = 0;
-            double sumValue = 0;
-            double sumDeltaTime = 0;
             double numNotes = 0;
             double numSliders = 0;
 
-            int index = 0;
             double currStrain = 0;
 
             foreach (var note in notes)
@@ -71,14 +68,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 currStrain *= strainDecay(note.deltaTime);
                 currStrain += note.Value;
 
-                if (currStrain < oldStrain || !(Math.Max(note.deltaTime, lastDeltaTime) < 1.25 * Math.Min(note.deltaTime, lastDeltaTime) && Math.Max(note.Value, lastValue) < 1.25 * Math.Min(note.Value, lastValue)))
+                if (currStrain < oldStrain || !(Math.Max(note.deltaTime, lastDeltaTime) < 1.25 * Math.Min(note.deltaTime, lastDeltaTime) && Math.Max(note.Value, lastValue) < 1.1 * Math.Min(note.Value, lastValue)))
                 {
-                    strains.Add(new VariableLengthStrainSkill.StrainPeak(oldStrain, numNotes));
+                    for (int i = 0; i < numNotes; i++)
+                        strains.Add(oldStrain);
 
                     for (int i = 0; i < numSliders; i++)
                         sliderStrains.Add(oldStrain);
 
-                    sumValue = 1;
                     numNotes = 1;
                     numSliders = note.isSlider ? 1 : 0;
                 }
@@ -90,13 +87,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
                 lastDeltaTime = note.deltaTime;
                 lastValue = note.Value;
-                index++;
             }
 
+            for (int i = 0; i < numNotes; i++)
+                strains.Add(currStrain);
             for (int i = 0; i < numSliders; i++)
                 sliderStrains.Add(currStrain);
 
-            return strains.Append(new VariableLengthStrainSkill.StrainPeak(currStrain, numNotes));
+            return strains;
         }
 
         public override double DifficultyValue()
@@ -105,36 +103,23 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             // Sections with 0 strain are excluded to avoid worst-case time complexity of the following sort (e.g. /b/2351871).
             // These sections will not contribute to the difficulty.
-            var strains = GetCurrentStrainPeaks().Where(p => p.Value > 0).OrderDescending().ToList();
+            var strains = GetCurrentStrainPeaks().Where(p => p > 0).OrderDescending().ToList();
 
-            // Time is measured in units of strains
-            double time = 0;
+            int index = 0;
 
-            // Difficulty is a continuous weighted sum of the sorted strains
-            // https://www.desmos.com/calculator/lkc1wtryjz
-            for (int i = 0; i < strains.Count; i++)
+            foreach (double note in strains.OrderDescending())
             {
-                double weight = this.weight(time + strains[i].SectionLength) - this.weight(time);
-                difficulty += strains[i].Value * weight;
-                time += strains[i].SectionLength;
+                // Use a harmonic sum that considers each note of the map according to a predefined weight using arbitrary balancing constants.
+                // https://www.desmos.com/calculator/hfdpztcazs
+                double weight = (1.0 + (20.0 / (1 + index))) / (Math.Pow(index, 0.85) + 1.0 + (20.0 / (1.0 + index)));
+
+                noteWeightSum += weight;
+
+                difficulty += note * weight;
+                index += 1;
             }
 
-            noteWeightSum = this.weight(time);
-
             return difficulty;
-        }
-
-        public double RelevantNoteCount()
-        {
-            var strains = GetCurrentStrainPeaks().Where(p => p.Value > 0).OrderDescending().ToList();
-            if (strains.Count == 0)
-                return 0;
-
-            double maxStrain = strains.MaxBy(p => p.Value).Value;
-            if (maxStrain == 0)
-                return 0;
-
-            return strains.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain.Value / maxStrain * 12.0 - 6.0))) * strain.SectionLength);
         }
 
         /// <summary>
@@ -142,9 +127,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         /// </summary>
         public double CountTopWeightedNotes(double difficultyValue)
         {
-            var strains = GetCurrentStrainPeaks().Where(p => p.Value > 0).OrderDescending().ToList();
+            var noteDifficulties = GetCurrentStrainPeaks().Where(p => p > 0).OrderDescending().ToList();
 
-            if (strains.Count == 0)
+            if (noteDifficulties.Count == 0)
                 return 0.0;
 
             if (noteWeightSum == 0)
@@ -156,12 +141,38 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 return 0;
 
             // Use a weighted sum of all notes. Constants are arbitrary and give nice values
-            return strains.Sum(s => 1.1 / (1 + Math.Exp(-10 * (s.Value / consistentTopNote - 0.88))) * s.SectionLength);
+            return noteDifficulties.Sum(s => 1.1 / (1 + Math.Exp(-10 * (s / consistentTopNote - 0.88))));
+        }
+
+        public double RelevantNoteCount()
+        {
+            var noteDifficulties = GetCurrentStrainPeaks().Where(p => p > 0).OrderDescending().ToList();
+
+            if (noteDifficulties.Count == 0)
+                return 0;
+
+            double maxStrain = noteDifficulties.Max();
+            if (maxStrain == 0)
+                return 0;
+
+            return noteDifficulties.Sum(strain => 1.0 / (1.0 + Math.Exp(-(strain / maxStrain * 12.0 - 6.0))));
         }
 
         public double CountTopWeightedSliders(double difficultyValue)
-            => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, difficultyValue);
+        {
+            if (sliderStrains.Count == 0)
+                return 0;
 
-        private double weight(double time) => (Math.Pow(Math.Log(time + 1), 2.32) * 0.134398398845 + Math.Log(Math.Pow(time, 2.15) + 1) * 0.793690755297) / 2;
-}
+            if (noteWeightSum == 0)
+                return 0.0;
+
+            double consistentTopNote = difficultyValue / noteWeightSum; // What would the top note be if all note values were identical
+
+            if (consistentTopNote == 0)
+                return 0;
+
+            // Use a weighted sum of all notes. Constants are arbitrary and give nice values
+            return sliderStrains.Sum(s => DifficultyCalculationUtils.Logistic(s / consistentTopNote, 0.88, 10, 1.1));
+        }
+    }
 }
