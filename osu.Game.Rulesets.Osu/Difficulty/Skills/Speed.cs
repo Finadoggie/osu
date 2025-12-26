@@ -93,7 +93,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected IEnumerable<double> GetCurrentSliderDifficulties()
         {
-            IEnumerable<double> strains = noteDifficulties;
+            IEnumerable<double> strains = sliderStrains;
 
             for (int i = 0; i < numSliders; i++)
                 strains = strains.Append(currentStrain * currentRhythm);
