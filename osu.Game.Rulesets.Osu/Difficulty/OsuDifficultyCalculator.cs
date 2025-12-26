@@ -60,7 +60,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double speedDifficultyValue = speed.DifficultyValue();
 
             double aimDifficultStrainCount = aim.CountTopWeightedStrains();
-            double speedDifficultStrainCount = speed.CountTopWeightedStrains();
+            double speedDifficultStrainCount = speed.CountTopWeightedNotes(speedDifficultyValue);
 
             double speedNotes = speed.RelevantNoteCount();
 
