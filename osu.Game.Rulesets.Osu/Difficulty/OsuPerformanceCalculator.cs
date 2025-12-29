@@ -480,8 +480,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double lerp = 1 - DifficultyCalculationUtils.ReverseLerp(speedDeviation.Value, 18.5, 23.5);
             adjustedSpeedValue = double.Lerp(adjustedSpeedValue, speedValue, lerp);
 
-            Console.WriteLine(adjustedSpeedValue / speedValue);
-
             return adjustedSpeedValue / speedValue;
         }
 
