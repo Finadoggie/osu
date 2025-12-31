@@ -58,6 +58,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             yield return new PerformanceDisplayAttribute(nameof(Accuracy), "Accuracy", Accuracy);
             yield return new PerformanceDisplayAttribute(nameof(Flashlight), "Flashlight Bonus", Flashlight);
             yield return new PerformanceDisplayAttribute(nameof(Reading), "Reading", Reading);
+            yield return new PerformanceDisplayAttribute(nameof(Hidden), "Hidden", Hidden);
+            yield return new PerformanceDisplayAttribute(nameof(Reaction), "Reaction", Reaction);
         }
     }
 }
