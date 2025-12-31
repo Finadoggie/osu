@@ -24,6 +24,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("reading")]
         public double Reading { get; set; }
 
+        [JsonProperty("hidden")]
+        public double Hidden { get; set; }
+
+        [JsonProperty("reaction")]
+        public double Reaction { get; set; }
+
         [JsonProperty("effective_miss_count")]
         public double EffectiveMissCount { get; set; }
 

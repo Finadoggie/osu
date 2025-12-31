@@ -17,7 +17,7 @@ using osu.Game.Rulesets.Osu.Objects;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 {
-    public class Reading : HarmonicSkill
+    public class Hidden : HarmonicSkill
     {
         private readonly IReadOnlyList<HitObject> objectList;
 
@@ -25,7 +25,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private readonly bool hasHiddenMod;
         private readonly double preempt;
 
-        public Reading(IBeatmap beatmap, Mod[] mods, double clockRate)
+        public Hidden(IBeatmap beatmap, Mod[] mods, double clockRate)
             : base(mods)
         {
             this.clockRate = clockRate;
@@ -45,7 +45,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
             currentDifficulty *= strainDecay(current.DeltaTime);
 
-            currentDifficulty += ReadingEvaluator.EvaluateDifficultyOf(current, objectList.Count, clockRate, preempt, hasHiddenMod).noteDensityDifficulty * skillMultiplier;
+            currentDifficulty += ReadingEvaluator.EvaluateDifficultyOf(current, objectList.Count, clockRate, preempt, hasHiddenMod).hiddenDifficulty * skillMultiplier;
 
             return currentDifficulty;
         }

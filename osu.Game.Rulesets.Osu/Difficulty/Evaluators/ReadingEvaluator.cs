@@ -23,10 +23,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private const double minimum_angle_relevancy_time = 2000; // 2 seconds
         private const double maximum_angle_relevancy_time = 200;
 
-        public static double EvaluateDifficultyOf(DifficultyHitObject current, int totalObjects, double clockRate, double preempt, bool hidden)
+        public static (double noteDensityDifficulty, double hiddenDifficulty, double preemptDifficulty) EvaluateDifficultyOf(DifficultyHitObject current, int totalObjects, double clockRate, double preempt, bool hidden)
         {
             if (current.BaseObject is Spinner || current.Index == 0)
-                return 0;
+                return (0, 0, 0);
 
             var currObj = (OsuDifficultyHitObject)current;
             var nextObj = (OsuDifficultyHitObject)current.Next(0);
@@ -46,9 +46,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             double preemptDifficulty = calculatePreemptDifficulty(velocity, constantAngleNerfFactor, preempt);
 
-            double difficulty = DifficultyCalculationUtils.Norm(1.5, preemptDifficulty, hiddenDifficulty, noteDensityDifficulty);
-
-            return difficulty;
+            return (noteDensityDifficulty, hiddenDifficulty, preemptDifficulty);
         }
 
         /// <summary>

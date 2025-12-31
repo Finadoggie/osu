@@ -147,8 +147,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double accuracyValue = computeAccuracyValue(score, osuAttributes);
             double flashlightValue = computeFlashlightValue(score, osuAttributes);
             double readingValue = computeReadingValue(osuAttributes);
+            double hiddenValue = computeHiddenValue(osuAttributes);
+            double reactionValue = computeReactionValue(osuAttributes);
 
-            double totalValue = DifficultyCalculationUtils.Norm(PERFORMANCE_NORM_EXPONENT, aimValue, speedValue, accuracyValue, readingValue, flashlightValue) * multiplier;
+            double totalValue = DifficultyCalculationUtils.Norm(PERFORMANCE_NORM_EXPONENT, aimValue, speedValue, accuracyValue, readingValue, hiddenValue, reactionValue, flashlightValue) * multiplier;
 
             return new OsuPerformanceAttributes
             {
@@ -157,6 +159,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 Accuracy = accuracyValue,
                 Flashlight = flashlightValue,
                 Reading = readingValue,
+                Hidden = hiddenValue,
+                Reaction = reactionValue,
                 EffectiveMissCount = effectiveMissCount,
                 ComboBasedEstimatedMissCount = comboBasedEstimatedMissCount,
                 ScoreBasedEstimatedMissCount = scoreBasedEstimatedMissCount,
@@ -334,6 +338,32 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private double computeReadingValue(OsuDifficultyAttributes attributes)
         {
             double readingValue = HarmonicSkill.DifficultyToPerformance(attributes.ReadingDifficulty);
+
+            if (effectiveMissCount > 0)
+                readingValue *= calculateMissPenalty(effectiveMissCount + aimEstimatedSliderBreaks, attributes.ReadingDifficultNoteCount);
+
+            // Scale the reading value with accuracy _harshly_.
+            readingValue *= Math.Pow(accuracy, 3);
+
+            return readingValue;
+        }
+
+        private double computeHiddenValue(OsuDifficultyAttributes attributes)
+        {
+            double readingValue = HarmonicSkill.DifficultyToPerformance(attributes.HiddenDifficulty);
+
+            if (effectiveMissCount > 0)
+                readingValue *= calculateMissPenalty(effectiveMissCount + aimEstimatedSliderBreaks, attributes.ReadingDifficultNoteCount);
+
+            // Scale the reading value with accuracy _harshly_.
+            readingValue *= Math.Pow(accuracy, 3);
+
+            return readingValue;
+        }
+
+        private double computeReactionValue(OsuDifficultyAttributes attributes)
+        {
+            double readingValue = HarmonicSkill.DifficultyToPerformance(attributes.ReactionDifficulty);
 
             if (effectiveMissCount > 0)
                 readingValue *= calculateMissPenalty(effectiveMissCount + aimEstimatedSliderBreaks, attributes.ReadingDifficultNoteCount);

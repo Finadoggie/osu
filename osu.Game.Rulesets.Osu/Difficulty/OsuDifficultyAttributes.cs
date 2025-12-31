@@ -51,6 +51,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("reading_difficulty")]
         public double ReadingDifficulty { get; set; }
 
+        [JsonProperty("hidden_difficulty")]
+        public double HiddenDifficulty { get; set; }
+
+        [JsonProperty("reaction_difficulty")]
+        public double ReactionDifficulty { get; set; }
+
         /// <summary>
         /// Describes how much of <see cref="AimDifficulty"/> is contributed to by hitcircles or sliders.
         /// A value closer to 1.0 indicates most of <see cref="AimDifficulty"/> is contributed by hitcircles.
@@ -83,6 +89,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         [JsonProperty("reading_difficult_note_count")]
         public double ReadingDifficultNoteCount { get; set; }
+
+        [JsonProperty("hidden_difficult_note_count")]
+        public double HiddenDifficultNoteCount { get; set; }
+
+        [JsonProperty("reaction_difficult_note_count")]
+        public double ReactionDifficultNoteCount { get; set; }
 
         [JsonProperty("nested_score_per_object")]
         public double NestedScorePerObject { get; set; }

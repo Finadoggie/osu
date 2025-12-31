@@ -55,17 +55,23 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             var speed = skills.OfType<Speed>().Single();
             var flashlight = skills.OfType<Flashlight>().SingleOrDefault();
             var reading = skills.OfType<Reading>().Single();
+            var hidden = skills.OfType<Hidden>().Single();
+            var reaction = skills.OfType<Reaction>().Single();
 
             double aimDifficultyValue = aim.DifficultyValue();
             double aimNoSlidersDifficultyValue = aimWithoutSliders.DifficultyValue();
             double speedDifficultyValue = speed.DifficultyValue();
             double readingDifficultyValue = reading.DifficultyValue();
+            double hiddenDifficultyValue = hidden.DifficultyValue();
+            double reactionDifficultyValue = reaction.DifficultyValue();
 
             double speedNotes = speed.RelevantNoteCount();
 
             double aimDifficultStrainCount = aim.CountTopWeightedStrains(aimDifficultyValue);
             double speedDifficultStrainCount = speed.CountTopWeightedStrains(speedDifficultyValue);
             double readingDifficultNoteCount = reading.CountTopWeightedObjectDifficulties(readingDifficultyValue);
+            double hiddenDifficultNoteCount = hidden.CountTopWeightedObjectDifficulties(hiddenDifficultyValue);
+            double reactionDifficultNoteCount = reaction.CountTopWeightedObjectDifficulties(reactionDifficultyValue);
 
             double aimNoSlidersTopWeightedSliderCount = aimWithoutSliders.CountTopWeightedSliders(aimNoSlidersDifficultyValue);
             double aimNoSlidersDifficultStrainCount = aimWithoutSliders.CountTopWeightedStrains(aimNoSlidersDifficultyValue);
@@ -92,6 +98,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double aimRating = osuRatingCalculator.ComputeAimRating(aimDifficultyValue);
             double speedRating = osuRatingCalculator.ComputeSpeedRating(speedDifficultyValue);
             double readingRating = osuRatingCalculator.ComputeReadingRating(readingDifficultyValue);
+            double hiddenRating = osuRatingCalculator.ComputeReadingRating(hiddenDifficultyValue);
+            double reactionRating = osuRatingCalculator.ComputeReadingRating(reactionDifficultyValue);
 
             double flashlightRating = 0.0;
 
@@ -107,9 +115,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             double baseAimPerformance = OsuStrainSkill.DifficultyToPerformance(aimRating);
             double baseSpeedPerformance = OsuStrainSkill.DifficultyToPerformance(speedRating);
             double baseReadingPerformance = HarmonicSkill.DifficultyToPerformance(readingRating);
+            double baseHiddenPerformance = HarmonicSkill.DifficultyToPerformance(hiddenRating);
+            double baseReactionPerformance = HarmonicSkill.DifficultyToPerformance(reactionRating);
             double baseFlashlightPerformance = Flashlight.DifficultyToPerformance(flashlightRating);
 
-            double basePerformance = DifficultyCalculationUtils.Norm(OsuPerformanceCalculator.PERFORMANCE_NORM_EXPONENT, baseAimPerformance, baseSpeedPerformance, baseReadingPerformance, baseFlashlightPerformance);
+            double basePerformance = DifficultyCalculationUtils.Norm(OsuPerformanceCalculator.PERFORMANCE_NORM_EXPONENT, baseAimPerformance, baseSpeedPerformance, baseReadingPerformance, baseHiddenPerformance, baseReactionPerformance, baseFlashlightPerformance);
 
             double starRating = calculateStarRating(basePerformance);
 
@@ -123,10 +133,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 SpeedNoteCount = speedNotes,
                 FlashlightDifficulty = flashlightRating,
                 ReadingDifficulty = readingRating,
+                HiddenDifficulty = hiddenRating,
+                ReactionDifficulty = reactionRating,
                 SliderFactor = sliderFactor,
                 AimDifficultStrainCount = aimDifficultStrainCount,
                 SpeedDifficultStrainCount = speedDifficultStrainCount,
                 ReadingDifficultNoteCount = readingDifficultNoteCount,
+                HiddenDifficultNoteCount = hiddenDifficultNoteCount,
+                ReactionDifficultNoteCount = reactionDifficultNoteCount,
                 AimTopWeightedSliderFactor = aimTopWeightedSliderFactor,
                 SpeedTopWeightedSliderFactor = speedTopWeightedSliderFactor,
                 MaxCombo = beatmap.GetMaxCombo(),
@@ -167,7 +181,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 new Aim(mods, true),
                 new Aim(mods, false),
                 new Speed(mods),
-                new Reading(beatmap, mods, clockRate)
+                new Reading(beatmap, mods, clockRate),
+                new Hidden(beatmap, mods, clockRate),
+                new Reaction(beatmap, mods, clockRate)
             };
 
             if (mods.Any(h => h is OsuModFlashlight))
