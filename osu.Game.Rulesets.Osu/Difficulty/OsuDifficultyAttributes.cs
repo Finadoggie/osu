@@ -128,6 +128,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             yield return (ATTRIB_ID_AIM, AimDifficulty);
             yield return (ATTRIB_ID_SPEED, SpeedDifficulty);
             yield return (ATTRIB_ID_READING, ReadingDifficulty);
+            yield return (ATTRIB_ID_HIDDEN, HiddenDifficulty);
+            yield return (ATTRIB_ID_REACTION, ReactionDifficulty);
             yield return (ATTRIB_ID_DIFFICULTY, StarRating);
 
             if (ShouldSerializeFlashlightDifficulty())
@@ -145,6 +147,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             yield return (ATTRIB_ID_LEGACY_SCORE_BASE_MULTIPLIER, LegacyScoreBaseMultiplier);
             yield return (ATTRIB_ID_MAXIMUM_LEGACY_COMBO_SCORE, MaximumLegacyComboScore);
             yield return (ATTRIB_ID_READING_DIFFICULT_NOTE_COUNT, ReadingDifficultNoteCount);
+            yield return (ATTRIB_ID_HIDDEN_DIFFICULT_NOTE_COUNT, HiddenDifficultNoteCount);
+            yield return (ATTRIB_ID_REACTION_DIFFICULT_NOTE_COUNT, ReactionDifficultNoteCount);
         }
 
         public override void FromDatabaseAttributes(IReadOnlyDictionary<int, double> values, IBeatmapOnlineInfo onlineInfo)
