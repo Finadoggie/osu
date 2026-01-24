@@ -14,7 +14,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     /// <summary>
     /// Represents the skill required to memorise and hit every object in a map with the Flashlight mod enabled.
     /// </summary>
-    public class Flashlight : StrainSkill
+    public class Flashlight : VariableLengthStrainSkill
     {
         private readonly bool hasHiddenMod;
 
@@ -24,7 +24,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             hasHiddenMod = mods.Any(m => m is OsuModHidden);
         }
 
-        private double skillMultiplier => 0.05512;
+        private double skillMultiplier => 0.05512 * 1.0727;
         private double strainDecayBase => 0.15;
 
         private double currentStrain;
@@ -41,7 +41,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return currentStrain;
         }
 
-        public override double DifficultyValue() => GetCurrentStrainPeaks().Sum();
+        public override double DifficultyValue()
+        {
+            var strains = GetCurrentStrainPeaks();
+
+            double sum = 0;
+            foreach (var strain in strains)
+                sum += strain.Value * strain.SectionLength / MaxSectionLength;
+
+            return sum;
+        }
 
         public static double DifficultyToPerformance(double difficulty) => 25 * Math.Pow(difficulty, 2);
     }

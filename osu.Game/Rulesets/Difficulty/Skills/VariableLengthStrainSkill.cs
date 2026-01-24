@@ -144,7 +144,6 @@ namespace osu.Game.Rulesets.Difficulty.Skills
                 currentSectionEnd = currentSectionBegin + MaxSectionLength;
                 currentSectionPeak = strain;
             }
-
         }
 
         /// <summary>
@@ -170,16 +169,17 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// </summary>
         private void saveCurrentPeak(double sectionLength)
         {
-            strainPeaks.AddInPlace(new StrainPeak(currentSectionPeak, sectionLength), strain_peak_comparer);
-            totalLength += sectionLength;
-
-            // Remove from the back of our strain peaks if there's any which are too deep to contribute to difficulty.
-            // `cutOffTime` dictates for us how many sections will preserve at least 99.999% of the difficulty value.
-            while (totalLength / MaxSectionLength > cutOffTime)
-            {
-                totalLength -= strainPeaks[^1].SectionLength;
-                strainPeaks.RemoveAt(strainPeaks.Count - 1);
-            }
+            strainPeaks.Add(new StrainPeak(currentSectionPeak, sectionLength));
+            // strainPeaks.AddInPlace(new StrainPeak(currentSectionPeak, sectionLength), strain_peak_comparer);
+            // totalLength += sectionLength;
+            //
+            // // Remove from the back of our strain peaks if there's any which are too deep to contribute to difficulty.
+            // // `cutOffTime` dictates for us how many sections will preserve at least 99.999% of the difficulty value.
+            // while (totalLength / MaxSectionLength > cutOffTime)
+            // {
+            //     totalLength -= strainPeaks[^1].SectionLength;
+            //     strainPeaks.RemoveAt(strainPeaks.Count - 1);
+            // }
         }
 
         /// <summary>
