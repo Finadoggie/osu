@@ -19,7 +19,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        private double skillMultiplier => 11.1;
+        private double skillMultiplier => 2.8727;
 
         private double currentStrain;
 
@@ -35,7 +35,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double decay = strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
 
             currentStrain *= decay;
-            currentStrain += StrainValueOf(current) * (1 - decay) * skillMultiplier;
+            currentStrain += StrainValueOf(current) * skillMultiplier;
 
             return currentStrain;
         }
