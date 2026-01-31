@@ -37,7 +37,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
         private static double calculateRepeatStrainCount(OsuDifficultyHitObject current)
         {
-            return 0;
+            throw new NotImplementedException();
         }
     }
 }
