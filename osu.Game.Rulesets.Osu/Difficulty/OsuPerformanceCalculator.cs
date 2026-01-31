@@ -57,7 +57,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private double approachRate;
         private double drainRate;
 
-        private double? deviation;
         private double? speedDeviation;
 
         private double aimEstimatedSliderBreaks;
@@ -142,7 +141,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             }
 
             speedDeviation = calculateSpeedDeviation(osuAttributes);
-            deviation = calculateAccuracyDeviation(osuAttributes);
 
             double aimValue = computeAimValue(score, osuAttributes);
             double speedValue = computeSpeedValue(score, osuAttributes);
@@ -272,14 +270,39 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double computeAccuracyValue(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
-            if (score.Mods.Any(h => h is OsuModRelax) || deviation == null)
+            if (score.Mods.Any(h => h is OsuModRelax))
                 return 0.0;
 
-            double accuracyValue = 120 * Math.Pow(7.5 / (double)deviation, 2);
+            double modifiedAcc = getModifiedAcc(attributes);
 
-            // Scale accuracy value with how much finger control the map has.
-            double fingerControlValue = HarmonicSkill.DifficultyToPerformance(attributes.FingerControlDifficulty);
-            accuracyValue *= fingerControlValue;
+            // technically accOnCircles = modifiedAcc
+            // -0.003 exists so that the difference between 99.5% and 100% is not too big
+            double accOnCircles = modifiedAcc - 0.003;
+
+            // accOnCircles can be negative. The formula below ensures a positive acc while
+            // preserving the value when accOnCircles is close to 1
+            double accOnCirclesPositive = Math.Exp(accOnCircles - 1);
+
+            double fingerControlDiff = attributes.FingerControlDifficulty;
+
+            // nerf high OD based on the fcontrol difficulty
+            double ODnerf = 100.0 / (fingerControlDiff + 5.0) + 10.0;//50.0 / (fingerControlDiff + 2.2) + 15.0;
+            double deviationOnCircles = (greatHitWindow + ODnerf) / (Math.Sqrt(2) * DifficultyCalculationUtils.ErfInv(accOnCirclesPositive));
+            double accuracyValue = Math.Pow(deviationOnCircles, -2.2) * 56000;
+
+            // scale acc pp with misses
+            accuracyValue *= Math.Pow(0.96, Math.Max(effectiveMissCount - 0.5, 0));
+
+            // nerf short maps
+            // double lengthFactor = /* attributes.Length < 120 ? DifficultyCalculationUtils.Logistic((attributes.Length - 300) / 60.0) + DifficultyCalculationUtils.Logistic(2.5) - DifficultyCalculationUtils.Logistic(-2.5) : */ DifficultyCalculationUtils.Logistic(attributes.Length / 60.0);
+            // accuracyValue *= lengthFactor;
+
+            // scale finger control bonus with acc
+            double mistimes = countOk + countMeh + (countMiss / 2.0) + 1.0;
+
+            accuracyValue *= 1.0 + Math.Pow(fingerControlDiff / 1.2, 0.4) *
+                (1.0 - DifficultyCalculationUtils.Logistic((0.5 - attributes.FingerControlHardStrains / mistimes) / 0.1) * 0.1) *
+                (1.0 + DifficultyCalculationUtils.Logistic((20.0 - greatHitWindow) / 1.3) * 0.2);
 
             // Increasing the accuracy value by object count for Blinds isn't ideal, so the minimum buff is given.
             if (score.Mods.Any(m => m is OsuModBlinds))
@@ -293,7 +316,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (score.Mods.Any(m => m is OsuModFlashlight))
                 accuracyValue *= 1.02;
 
-            return accuracyValue;
+            return accuracyValue * 0.9727;
         }
 
         private double computeFlashlightValue(ScoreInfo score, OsuDifficultyAttributes attributes)
@@ -418,23 +441,23 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         /// Estimates player's deviation on speed notes using <see cref="calculateDeviation"/>, assuming worst-case.
         /// Treats all speed notes as hit circles.
         /// </summary>
-        private double? calculateAccuracyDeviation(OsuDifficultyAttributes attributes)
+        private double getModifiedAcc(OsuDifficultyAttributes attributes)
         {
-            if (totalSuccessfulHits == 0)
-                return null;
-
             // Calculate accuracy assuming the worst case scenario
             int amountHitObjectsWithAccuracy = attributes.HitCircleCount;
             if (!usingClassicSliderAccuracy || usingScoreV2)
                 amountHitObjectsWithAccuracy += attributes.SliderCount;
 
             // Assume worst case: all mistakes were on speed notes
-            double relevantCountMiss = Math.Min(countMiss, amountHitObjectsWithAccuracy);
-            double relevantCountMeh = Math.Min(countMeh, amountHitObjectsWithAccuracy - relevantCountMiss);
-            double relevantCountOk = Math.Min(countOk, amountHitObjectsWithAccuracy - relevantCountMiss - relevantCountMeh);
-            double relevantCountGreat = Math.Max(0, amountHitObjectsWithAccuracy - relevantCountMiss - relevantCountMeh - relevantCountOk);
 
-            return calculateDeviation(relevantCountGreat, relevantCountOk, relevantCountMeh);
+            // Treat 300 as 300, 100 as 200, 50 as 100
+            // Assume all 300s on sliders/spinners and exclude them from the calculation. In other words we're
+            // estimating the scorev2 acc from scorev1 acc.
+            // Add 2 to countHitCircles in the denominator so that later erfinv gives resonable result for ss scores
+            double modifiedAcc = ((countGreat - (totalHits - amountHitObjectsWithAccuracy)) * 3 + countOk * 2 + countMeh) /
+                                 ((amountHitObjectsWithAccuracy + 2) * 3.0);
+
+            return modifiedAcc;
         }
 
         /// <summary>

@@ -73,7 +73,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Nerf doubletaps
             double doubletapness = 1.0 - osuCurrObj.GetDoubletapness((OsuDifficultyHitObject?)osuCurrObj.Next(0));
 
-            return repetitionVal * multiplier * downtimeScale * appearanceScale * uniqueScale * doubletapness / osuCurrObj.AdjustedDeltaTime;
+            double strain = repetitionVal * multiplier * downtimeScale * appearanceScale * uniqueScale * doubletapness / osuCurrObj.AdjustedDeltaTime;
+            strain *= 0;
+
+            return strain;
         }
 
         private static double calculateExpectancy(OsuDifficultyHitObject osuCurrObj, List<double> refNoteHistory)

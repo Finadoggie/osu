@@ -98,9 +98,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (mods.Any(m => m is OsuModRelax))
                 return 0;
 
-            double fingerControlRating = CalculateDifficultyRating(fingerControlDifficultyValue);
-
-            return fingerControlRating;
+            return fingerControlDifficultyValue;
         }
 
         public double ComputeFlashlightRating(double flashlightDifficultyValue)

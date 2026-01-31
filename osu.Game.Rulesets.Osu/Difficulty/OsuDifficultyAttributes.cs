@@ -57,6 +57,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("finger_control_difficulty")]
         public double FingerControlDifficulty { get; set; }
 
+        [JsonProperty("finger_control_hard_strains")]
+        public int FingerControlHardStrains { get; set; }
+
         /// <summary>
         /// Describes how much of <see cref="AimDifficulty"/> is contributed to by hitcircles or sliders.
         /// A value closer to 1.0 indicates most of <see cref="AimDifficulty"/> is contributed by hitcircles.
@@ -99,6 +102,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         [JsonProperty("maximum_legacy_combo_score")]
         public double MaximumLegacyComboScore { get; set; }
 
+        [JsonProperty("length")]
+        public double Length { get; set; }
+
         /// <summary>
         /// The number of hitcircles in the beatmap.
         /// </summary>
@@ -113,6 +119,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         /// The number of spinners in the beatmap.
         /// </summary>
         public int SpinnerCount { get; set; }
+
 
         public override IEnumerable<(int attributeId, object value)> ToDatabaseAttributes()
         {

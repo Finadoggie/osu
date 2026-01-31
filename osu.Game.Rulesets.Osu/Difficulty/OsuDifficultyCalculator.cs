@@ -120,6 +120,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double starRating = calculateStarRating(basePerformance);
 
+            double mapLength = 0;
+            if (beatmap.HitObjects.Count > 0)
+                mapLength = (beatmap.HitObjects.Last().StartTime - beatmap.HitObjects.First().StartTime) / 1000 / clockRate;
+
             OsuDifficultyAttributes attributes = new OsuDifficultyAttributes
             {
                 StarRating = starRating,
@@ -131,6 +135,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 FlashlightDifficulty = flashlightRating,
                 ReadingDifficulty = readingRating,
                 FingerControlDifficulty = fingerControlRating,
+                FingerControlHardStrains = fingerControl.HardStrains,
+                Length = mapLength,
                 SliderFactor = sliderFactor,
                 AimDifficultStrainCount = aimDifficultStrainCount,
                 SpeedDifficultStrainCount = speedDifficultStrainCount,

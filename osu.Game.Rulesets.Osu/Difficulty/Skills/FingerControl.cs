@@ -19,11 +19,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        private double skillMultiplier => 2.8727;
+        private double skillMultiplier => 1.3;
 
         private double currentStrain;
 
         private readonly List<double> noteHistory = new List<double>();
+
+        public int HardStrains { get; private set; }
 
         private double strainDecay(double ms) => Math.Pow(Math.Pow(0.75, 1 / Math.Min(ms / 1000, 0.15)), ms / 1000);
 
@@ -32,26 +34,36 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         /// </summary>
         protected override double ObjectDifficultyOf(DifficultyHitObject current)
         {
+            noteHistory.Add(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
+            while (noteHistory.Sum() > 4000 || noteHistory.Count > 32)
+                noteHistory.RemoveAt(0);
+
             double decay = strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
 
             currentStrain *= decay;
-            currentStrain += StrainValueOf(current) * skillMultiplier;
+            currentStrain += FingerControlEvaluator.EvaluateDifficultyOf(current, noteHistory) * skillMultiplier;
+
+            if (currentStrain > 1.1) HardStrains++;
 
             return currentStrain;
         }
 
-        protected double StrainValueOf(DifficultyHitObject current)
+        public override double DifficultyValue()
         {
-            var osuCurrObj = (OsuDifficultyHitObject)current;
+            const double decay_weight = 0.98;
 
-            noteHistory.Add(osuCurrObj.AdjustedDeltaTime);
+            double difficulty = 0;
+            double weight = 1;
 
-            while (noteHistory.Sum() > 4 || noteHistory.Count > 32)
-                noteHistory.RemoveAt(0);
+            // Difficulty is the weighted sum of the highest strains from every section.
+            // We're sorting from highest to lowest strain.
+            foreach (double strain in ObjectDifficulties.OrderDescending())
+            {
+                difficulty += strain * weight;
+                weight *= decay_weight;
+            }
 
-            double strain = FingerControlEvaluator.EvaluateDifficultyOf(current, noteHistory);
-
-            return strain;
+            return difficulty * (1 - decay_weight);
         }
     }
 }
