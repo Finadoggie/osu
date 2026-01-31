@@ -20,6 +20,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         }
 
         private double skillMultiplier => 1.3;
+        private double graphVisibilityMultiplier => 50000; // Multiplier so the strains are visible on a strain graph in perfcalcgui
 
         private double currentStrain;
 
@@ -45,7 +46,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             if (currentStrain > 1.1) HardStrains++;
 
-            return currentStrain;
+            return currentStrain * 50000;
         }
 
         public override double DifficultyValue()
@@ -59,11 +60,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             // We're sorting from highest to lowest strain.
             foreach (double strain in ObjectDifficulties.OrderDescending())
             {
-                difficulty += strain * weight;
+                difficulty += strain * weight / 50000;
                 weight *= decay_weight;
             }
 
-            return difficulty * (1 - decay_weight);
+            return difficulty;
         }
     }
 }

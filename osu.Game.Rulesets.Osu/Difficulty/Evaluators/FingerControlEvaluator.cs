@@ -29,7 +29,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 return 0;
 
             if (noteHistory.Count <= 2)
-                return 1;
+                return 0;
 
             var osuCurrObj = (OsuDifficultyHitObject)current;
             var osuLastObj = (OsuDifficultyHitObject)current.Previous(0);
@@ -41,7 +41,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double uniqueScale = 1;
 
             double repetition = 1.0 - calculateExpectancy(osuCurrObj, noteHistory);
-            double repetitionExponent = Math.Min(2.0, 48.75 * osuCurrObj.AdjustedDeltaTime - 1.65625);
+            double repetitionExponent = Math.Min(2.0, 48.75 * osuCurrObj.AdjustedDeltaTime / 1000 - 1.65625);
             repetitionVal = Math.Pow(repetition, repetitionExponent);
 
             // When there is major downtime / not much actually happening
@@ -74,7 +74,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double doubletapness = 1.0 - osuCurrObj.GetDoubletapness((OsuDifficultyHitObject?)osuCurrObj.Next(0));
 
             double strain = repetitionVal * multiplier * downtimeScale * appearanceScale * uniqueScale * doubletapness / osuCurrObj.AdjustedDeltaTime;
-            strain *= 0;
+            if (double.IsNaN(strain)) strain = 0;
 
             return strain;
         }
@@ -92,7 +92,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             for (int i = 1; i < refNoteHistory.Count; i++)
             {
-                if (Math.Abs(refNoteHistory[i] - strainTime) > osuCurrObj.HitWindowGreat / 1000)
+                if (Math.Abs(refNoteHistory[i] - strainTime) > osuCurrObj.HitWindowGreat)
                 {
                     pattern = refNoteHistory.Take(i + 1).ToList();
                     break;
@@ -135,7 +135,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                     for (int j = 0; j < pattern.Count; j++)
                     {
-                        if (Math.Abs(pattern[j] - patternCompare[j]) > osuCurrObj.HitWindowGreat / 1000)
+                        if (Math.Abs(pattern[j] - patternCompare[j]) > osuCurrObj.HitWindowGreat)
                         {
                             samePattern = false;
                             break;
@@ -151,7 +151,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                         for (int j = 0; j < pattern.Count; j++)
                         {
-                            if (Math.Abs(pattern[j] - patternCompare[j]) > osuCurrObj.HitWindowGreat / 1000)
+                            if (Math.Abs(pattern[j] - patternCompare[j]) > osuCurrObj.HitWindowGreat)
                             {
                                 reverseSamePattern = false;
                                 break;
@@ -204,7 +204,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             for (int i = 0; i < refNoteHistory.Count; i++)
             {
-                if (refNoteHistory[i] > osuCurrObj.AdjustedDeltaTime * 2 - osuCurrObj.HitWindowGreat / 1000)
+                if (refNoteHistory[i] > osuCurrObj.AdjustedDeltaTime * 2 - osuCurrObj.HitWindowGreat)
                     longNoteCount++;
             }
 
@@ -219,7 +219,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             for (int i = 0; i < refNoteHistory.Count; i++)
             {
-                if (Math.Abs(refNoteHistory[i] - osuCurrObj.AdjustedDeltaTime) < osuCurrObj.HitWindowGreat / 1000)
+                if (Math.Abs(refNoteHistory[i] - osuCurrObj.AdjustedDeltaTime) < osuCurrObj.HitWindowGreat)
                     strainApperance++;
             }
 
@@ -239,7 +239,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 for (int j = 0; j < uniqueStrains.Count; j++)
                 {
-                    if (Math.Abs(uniqueStrains[j] - refNoteHistory[i]) < osuCurrObj.HitWindowGreat / 1000)
+                    if (Math.Abs(uniqueStrains[j] - refNoteHistory[i]) < osuCurrObj.HitWindowGreat)
                     {
                         exists = true;
                         break;
@@ -259,9 +259,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             for (int j = 0; j < uniqueStrains.Count; j++)
             {
                 if (
-                    Math.Abs(strainTime - uniqueStrains[j]) < osuCurrObj.HitWindowGreat / 1000 ||
-                    Math.Abs(strainTime * 2 - uniqueStrains[j]) < osuCurrObj.HitWindowGreat / 1000 ||
-                    Math.Abs(strainTime / 2 - uniqueStrains[j]) < osuCurrObj.HitWindowGreat / 1000
+                    Math.Abs(strainTime - uniqueStrains[j]) < osuCurrObj.HitWindowGreat ||
+                    Math.Abs(strainTime * 2 - uniqueStrains[j]) < osuCurrObj.HitWindowGreat ||
+                    Math.Abs(strainTime / 2 - uniqueStrains[j]) < osuCurrObj.HitWindowGreat
                 )
                 {
                     unique = false;
