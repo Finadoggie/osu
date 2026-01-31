@@ -57,6 +57,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         private double approachRate;
         private double drainRate;
 
+        private double? deviation;
         private double? speedDeviation;
 
         private double aimEstimatedSliderBreaks;
@@ -141,6 +142,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             }
 
             speedDeviation = calculateSpeedDeviation(osuAttributes);
+            deviation = calculateAccuracyDeviation(osuAttributes);
 
             double aimValue = computeAimValue(score, osuAttributes);
             double speedValue = computeSpeedValue(score, osuAttributes);
@@ -270,30 +272,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
         private double computeAccuracyValue(ScoreInfo score, OsuDifficultyAttributes attributes)
         {
-            if (score.Mods.Any(h => h is OsuModRelax))
+            if (score.Mods.Any(h => h is OsuModRelax) || deviation == null)
                 return 0.0;
 
-            // This percentage only considers HitCircles of any value - in this part of the calculation we focus on hitting the timing hit window.
-            double betterAccuracyPercentage;
-            int amountHitObjectsWithAccuracy = attributes.HitCircleCount;
-            if (!usingClassicSliderAccuracy || usingScoreV2)
-                amountHitObjectsWithAccuracy += attributes.SliderCount;
+            double accuracyValue = 120 * Math.Pow(7.5 / (double)deviation, 2);
 
-            if (amountHitObjectsWithAccuracy > 0)
-                betterAccuracyPercentage = ((countGreat - Math.Max(totalHits - amountHitObjectsWithAccuracy, 0)) * 6 + countOk * 2 + countMeh) / (double)(amountHitObjectsWithAccuracy * 6);
-            else
-                betterAccuracyPercentage = 0;
-
-            // It is possible to reach a negative accuracy with this formula. Cap it at zero - zero points.
-            if (betterAccuracyPercentage < 0)
-                betterAccuracyPercentage = 0;
-
-            // Lots of arbitrary values from testing.
-            // Considering to use derivation from perfect accuracy in a probabilistic manner - assume normal distribution.
-            double accuracyValue = Math.Pow(1.52163, overallDifficulty) * Math.Pow(betterAccuracyPercentage, 24) * 2.83;
-
-            // Bonus for many hitcircles - it's harder to keep good accuracy up for longer.
-            accuracyValue *= Math.Min(1.15, Math.Pow(amountHitObjectsWithAccuracy / 1000.0, 0.3));
+            // Scale accuracy value with how much finger control the map has.
+            double fingerControlValue = HarmonicSkill.DifficultyToPerformance(attributes.FingerControlDifficulty);
+            accuracyValue *= fingerControlValue;
 
             // Increasing the accuracy value by object count for Blinds isn't ideal, so the minimum buff is given.
             if (score.Mods.Any(m => m is OsuModBlinds))
@@ -417,14 +403,36 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 return null;
 
             // Calculate accuracy assuming the worst case scenario
-            double speedNoteCount = attributes.SpeedNoteCount;
-            speedNoteCount += (totalHits - attributes.SpeedNoteCount) * 0.1;
+            double amountHitObjectsWithAccuracy = attributes.SpeedNoteCount;
 
             // Assume worst case: all mistakes were on speed notes
-            double relevantCountMiss = Math.Min(countMiss, speedNoteCount);
-            double relevantCountMeh = Math.Min(countMeh, speedNoteCount - relevantCountMiss);
-            double relevantCountOk = Math.Min(countOk, speedNoteCount - relevantCountMiss - relevantCountMeh);
-            double relevantCountGreat = Math.Max(0, speedNoteCount - relevantCountMiss - relevantCountMeh - relevantCountOk);
+            double relevantCountMiss = Math.Min(countMiss, amountHitObjectsWithAccuracy);
+            double relevantCountMeh = Math.Min(countMeh, amountHitObjectsWithAccuracy - relevantCountMiss);
+            double relevantCountOk = Math.Min(countOk, amountHitObjectsWithAccuracy - relevantCountMiss - relevantCountMeh);
+            double relevantCountGreat = Math.Max(0, amountHitObjectsWithAccuracy - relevantCountMiss - relevantCountMeh - relevantCountOk);
+
+            return calculateDeviation(relevantCountGreat, relevantCountOk, relevantCountMeh);
+        }
+
+        /// <summary>
+        /// Estimates player's deviation on speed notes using <see cref="calculateDeviation"/>, assuming worst-case.
+        /// Treats all speed notes as hit circles.
+        /// </summary>
+        private double? calculateAccuracyDeviation(OsuDifficultyAttributes attributes)
+        {
+            if (totalSuccessfulHits == 0)
+                return null;
+
+            // Calculate accuracy assuming the worst case scenario
+            int amountHitObjectsWithAccuracy = attributes.HitCircleCount;
+            if (!usingClassicSliderAccuracy || usingScoreV2)
+                amountHitObjectsWithAccuracy += attributes.SliderCount;
+
+            // Assume worst case: all mistakes were on speed notes
+            double relevantCountMiss = Math.Min(countMiss, amountHitObjectsWithAccuracy);
+            double relevantCountMeh = Math.Min(countMeh, amountHitObjectsWithAccuracy - relevantCountMiss);
+            double relevantCountOk = Math.Min(countOk, amountHitObjectsWithAccuracy - relevantCountMiss - relevantCountMeh);
+            double relevantCountGreat = Math.Max(0, amountHitObjectsWithAccuracy - relevantCountMiss - relevantCountMeh - relevantCountOk);
 
             return calculateDeviation(relevantCountGreat, relevantCountOk, relevantCountMeh);
         }
