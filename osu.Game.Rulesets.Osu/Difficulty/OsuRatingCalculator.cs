@@ -100,7 +100,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double fingerControlRating = CalculateDifficultyRating(fingerControlDifficultyValue);
 
-            return fingerControlRating * 2.5;
+            return fingerControlRating;
         }
 
         public double ComputeFlashlightRating(double flashlightDifficultyValue)

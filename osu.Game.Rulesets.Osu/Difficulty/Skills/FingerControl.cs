@@ -19,21 +19,20 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        private double skillMultiplier => 1.3;
-        private double strainDecayBase => 0.15;
+        private double skillMultiplier => 11.1;
 
         private double currentStrain;
 
         private readonly List<double> noteHistory = new List<double>();
 
-        private double strainDecay(double ms) => Math.Pow(strainDecayBase, 1 / Math.Min(ms / 1000, 0.2));
+        private double strainDecay(double ms) => Math.Pow(Math.Pow(0.75, 1 / Math.Min(ms / 1000, 0.15)), ms / 1000);
 
         /// <summary>
         /// Calculates finger control difficulty of the map
         /// </summary>
         protected override double ObjectDifficultyOf(DifficultyHitObject current)
         {
-            currentStrain *= strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
+            currentStrain *= 0;//strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
             currentStrain += StrainValueOf(current) * skillMultiplier;
 
             return currentStrain;
