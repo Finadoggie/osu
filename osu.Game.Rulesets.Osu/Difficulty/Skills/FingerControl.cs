@@ -32,8 +32,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         /// </summary>
         protected override double ObjectDifficultyOf(DifficultyHitObject current)
         {
-            currentStrain *= 0;//strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
-            currentStrain += StrainValueOf(current) * skillMultiplier;
+            double decay = strainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
+
+            currentStrain *= decay;
+            currentStrain += StrainValueOf(current) * (1 - decay) * skillMultiplier;
 
             return currentStrain;
         }
