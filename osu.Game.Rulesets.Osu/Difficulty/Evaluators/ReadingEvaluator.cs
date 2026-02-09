@@ -262,7 +262,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 double loopObjectInvisibleStartTime = loopObject.BaseObject.StartTime - loopObject.DurationSpentInvisible();
                 double perceivedInvisibleStartTime = current.BaseObject.StartTime - perceivedTimeSpentInvisible;
-                double deltaInvisibleStartTime = loopObjectInvisibleStartTime - perceivedInvisibleStartTime;
+                double deltaInvisibleStartTime = Math.Max(loopObjectInvisibleStartTime - perceivedInvisibleStartTime, 0); // Ensure objects cannot *increase* invisible time
 
                 perceivedTimeSpentInvisible -= influence * deltaInvisibleStartTime;
 
