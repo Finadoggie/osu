@@ -162,6 +162,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             setDistances(clockRate);
         }
 
+        /// <summary>
+        /// Returns the amount of time a note spends invisible with the hidden mod at the current approach rate.
+        /// </summary>
+        public double DurationSpentInvisible()
+        {
+            double fadeOutStartTime = BaseObject.StartTime - BaseObject.TimePreempt + BaseObject.TimeFadeIn;
+            double fadeOutDuration = BaseObject.TimePreempt * OsuModHidden.FADE_OUT_DURATION_MULTIPLIER;
+
+            return (fadeOutStartTime + fadeOutDuration) - (BaseObject.StartTime - BaseObject.TimePreempt);
+        }
+
         public double OpacityAt(double time, bool hidden)
         {
             if (time > BaseObject.StartTime)

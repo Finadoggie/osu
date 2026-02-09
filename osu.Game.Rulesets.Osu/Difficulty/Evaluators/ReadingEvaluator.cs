@@ -123,10 +123,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Account for both past and current densities
             double densityFactor = Math.Pow(currentVisibleObjectDensity + pastObjectDifficultyInfluence, 3.3) * 3;
 
+            // Nerf in cases where object is easier to see due to nearby objects
+            double visibilityNerf = getVisibilityNerf(currObj);
+
             double hiddenDifficulty = (preemptFactor + densityFactor) * constantAngleNerfFactor * velocity * 0.01;
 
             // Apply a soft cap to general HD reading to account for partial memorization
-            hiddenDifficulty = Math.Pow(hiddenDifficulty, 0.4) * hidden_multiplier;
+            hiddenDifficulty = Math.Pow(hiddenDifficulty, 0.4) * hidden_multiplier * visibilityNerf;
 
             var previousObj = (OsuDifficultyHitObject)currObj.Previous(0);
 
@@ -231,6 +234,53 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             }
 
             return Math.Clamp(2 / constantAngleCount, 0.2, 1);
+        }
+
+        /// <summary>
+        /// Returns a nerf if future objects overlap significantly with this object, making it easier to see with hidden.
+        /// </summary>
+        private static double getVisibilityNerf(OsuDifficultyHitObject current)
+        {
+            double perceivedTimeSpentInvisible = current.DurationSpentInvisible();
+
+            var currBaseObject = ((OsuHitObject)current.BaseObject);
+
+            // We will scale distances by this factor, so we can assume a uniform CircleSize among beatmaps.
+            float scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / (float)currBaseObject.Radius;
+
+            OsuDifficultyHitObject? loopObject = (OsuDifficultyHitObject)current.Next(0);
+
+            while (loopObject != null)
+            {
+                if (loopObject.StartTime - current.StartTime > reading_window_size ||
+                    current.StartTime + loopObject.Preempt < loopObject.StartTime) // Object not visible at the time current object needs to be clicked.
+                    break;
+
+                var loopBaseObject = (OsuHitObject)loopObject.BaseObject;
+
+                double distance = (currBaseObject.StackedPosition - loopBaseObject.StackedPosition).Length * scalingFactor;
+                double influence = Math.Pow(DifficultyCalculationUtils.ReverseLerp(distance, OsuDifficultyHitObject.NORMALISED_RADIUS, 0), 5.0);
+
+                double loopObjectInvisibleStartTime = loopObject.StartTime - loopObject.DurationSpentInvisible();
+                double perceivedInvisibleStartTime = current.StartTime - perceivedTimeSpentInvisible;
+                double deltaInvisibleStartTime = loopObjectInvisibleStartTime - perceivedInvisibleStartTime;
+
+                perceivedTimeSpentInvisible -= influence * deltaInvisibleStartTime;
+
+                // This function can produce results below zero
+                // In these cases, we return 0, applying a full nerf
+                if (perceivedTimeSpentInvisible <= 0)
+                    return 0;
+
+                loopObject = (OsuDifficultyHitObject?)loopObject.Next(0);
+            }
+
+            double ratio = perceivedTimeSpentInvisible / current.DurationSpentInvisible();
+
+            if (ratio != 1)
+                Console.WriteLine(ratio);
+
+            return ratio;
         }
 
         // Returns a nerfing factor for when objects are very distant in time, affecting reading less.
