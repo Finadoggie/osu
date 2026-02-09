@@ -257,12 +257,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 var loopBaseObject = (OsuHitObject)loopObject.BaseObject;
 
+                // Only nerf objects that are perfect or close overlaps
                 double distance = (currBaseObject.StackedPosition - loopBaseObject.StackedPosition).Length * scalingFactor;
                 double influence = Math.Pow(DifficultyCalculationUtils.ReverseLerp(distance, OsuDifficultyHitObject.NORMALISED_RADIUS, 0), 5.0);
 
+                // This is how long the object is actually spent invisible in cases of perfect stacks
                 double loopObjectInvisibleStartTime = loopObject.BaseObject.StartTime - loopObject.DurationSpentInvisible();
                 double perceivedInvisibleStartTime = current.BaseObject.StartTime - perceivedTimeSpentInvisible;
-                double deltaInvisibleStartTime = Math.Max(loopObjectInvisibleStartTime - perceivedInvisibleStartTime, 0); // Ensure objects cannot *increase* invisible time
+                double deltaInvisibleStartTime = Math.Max(loopObjectInvisibleStartTime - perceivedInvisibleStartTime, 0); // Ensure objects cannot increase invisible time
 
                 perceivedTimeSpentInvisible -= influence * deltaInvisibleStartTime;
 
