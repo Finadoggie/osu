@@ -117,16 +117,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private static double calculateHiddenDifficulty(OsuDifficultyHitObject currObj, double pastObjectDifficultyInfluence, double currentVisibleObjectDensity, double velocity,
                                                         double constantAngleNerfFactor)
         {
+            double perceivedTimeSpentInvisible = getPerceivedDurationSpentInvisible(currObj) / currObj.ClockRate;
+
             // Higher preempt means that time spent invisible is higher too, we want to reward that
-            double preemptFactor = Math.Pow(currObj.Preempt, 2.2) * 0.01;
+            double timeSpentInvisibleFactor = Math.Pow(perceivedTimeSpentInvisible, 2.2) * 0.022;
 
             // Account for both past and current densities
             double densityFactor = Math.Pow(currentVisibleObjectDensity + pastObjectDifficultyInfluence, 3.3) * 3;
 
-            // Nerf in cases where object is easier to see due to nearby objects
-            double visibilityNerf = getVisibilityNerf(currObj);
-
-            double hiddenDifficulty = (preemptFactor + densityFactor) * constantAngleNerfFactor * visibilityNerf * velocity * 0.01;
+            double hiddenDifficulty = (timeSpentInvisibleFactor + densityFactor) * constantAngleNerfFactor * velocity * 0.01;
 
             // Apply a soft cap to general HD reading to account for partial memorization
             hiddenDifficulty = Math.Pow(hiddenDifficulty, 0.4) * hidden_multiplier;
@@ -239,7 +238,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         /// <summary>
         /// Returns a nerf if future objects overlap significantly with this object, making it easier to see with hidden.
         /// </summary>
-        private static double getVisibilityNerf(OsuDifficultyHitObject current)
+        private static double getPerceivedDurationSpentInvisible(OsuDifficultyHitObject current)
         {
             double perceivedTimeSpentInvisible = current.DurationSpentInvisible();
 
@@ -261,8 +260,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double distance = (currBaseObject.StackedPosition - loopBaseObject.StackedPosition).Length * scalingFactor;
                 double influence = Math.Pow(DifficultyCalculationUtils.ReverseLerp(distance, OsuDifficultyHitObject.NORMALISED_RADIUS, 0), 5.0);
 
-                double loopObjectInvisibleStartTime = loopObject.StartTime - loopObject.DurationSpentInvisible();
-                double perceivedInvisibleStartTime = current.StartTime - perceivedTimeSpentInvisible;
+                double loopObjectInvisibleStartTime = loopObject.BaseObject.StartTime - loopObject.DurationSpentInvisible();
+                double perceivedInvisibleStartTime = current.BaseObject.StartTime - perceivedTimeSpentInvisible;
                 double deltaInvisibleStartTime = loopObjectInvisibleStartTime - perceivedInvisibleStartTime;
 
                 perceivedTimeSpentInvisible -= influence * deltaInvisibleStartTime;
@@ -275,9 +274,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 loopObject = (OsuDifficultyHitObject?)loopObject.Next(0);
             }
 
-            double ratio = perceivedTimeSpentInvisible / current.DurationSpentInvisible();
-
-            return ratio;
+            return perceivedTimeSpentInvisible;
         }
 
         // Returns a nerfing factor for when objects are very distant in time, affecting reading less.
