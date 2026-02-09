@@ -126,10 +126,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Nerf in cases where object is easier to see due to nearby objects
             double visibilityNerf = getVisibilityNerf(currObj);
 
-            double hiddenDifficulty = (preemptFactor + densityFactor) * constantAngleNerfFactor * velocity * 0.01;
+            double hiddenDifficulty = (preemptFactor + densityFactor) * constantAngleNerfFactor * visibilityNerf * velocity * 0.01;
 
             // Apply a soft cap to general HD reading to account for partial memorization
-            hiddenDifficulty = Math.Pow(hiddenDifficulty, 0.4) * hidden_multiplier * visibilityNerf;
+            hiddenDifficulty = Math.Pow(hiddenDifficulty, 0.4) * hidden_multiplier;
 
             var previousObj = (OsuDifficultyHitObject)currObj.Previous(0);
 
@@ -276,9 +276,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             }
 
             double ratio = perceivedTimeSpentInvisible / current.DurationSpentInvisible();
-
-            if (ratio != 1)
-                Console.WriteLine(ratio);
 
             return ratio;
         }
