@@ -2,10 +2,13 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
+using osu.Framework.Extensions.ObjectExtensions;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Osu.Objects;
+using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 {
@@ -14,7 +17,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private const double wide_angle_multiplier = 1.5;
         private const double acute_angle_multiplier = 2.3;
         private const double slider_multiplier = 1.5;
-        private const double velocity_change_multiplier = 0.75;
         private const double wiggle_multiplier = 1.02; // WARNING: Increasing this multiplier beyond 1.02 reduces difficulty as distance increases. Refer to the desmos link above the wiggle bonus calculation
 
         /// <summary>
@@ -67,8 +69,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double wideAngleBonus = 0;
             double acuteAngleBonus = 0;
             double sliderBonus = 0;
-            double velocityChangeBonus = 0;
             double wiggleBonus = 0;
+            double vectorBonus = 0;
 
             double aimStrain = currVelocity; // Start strain with regular velocity.
 
@@ -127,35 +129,33 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 }
             }
 
-            if (Math.Max(prevVelocity, currVelocity) != 0)
-            {
-                if (withSliderTravelDistance)
-                {
-                    // We want to use the average velocity over the whole object when awarding differences, not the individual jump and slider path velocities.
-                    prevVelocity = (osuLastObj.LazyJumpDistance + osuLastLastObj.TravelDistance) / osuLastObj.AdjustedDeltaTime;
-                    currVelocity = (osuCurrObj.LazyJumpDistance + osuLastObj.TravelDistance) / osuCurrObj.AdjustedDeltaTime;
-                }
-
-                // Scale with ratio of difference compared to 0.5 * max dist.
-                double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity), 0, 1);
-
-                // Reward for % distance up to 125 / strainTime for overlaps where velocity is still changing.
-                double overlapVelocityBuff = Math.Min(diameter * 1.25 / Math.Min(osuCurrObj.AdjustedDeltaTime, osuLastObj.AdjustedDeltaTime), Math.Abs(prevVelocity - currVelocity));
-
-                velocityChangeBonus = overlapVelocityBuff * distRatio;
-
-                // Penalize for rhythm changes.
-                velocityChangeBonus *= Math.Pow(Math.Min(osuCurrObj.AdjustedDeltaTime, osuLastObj.AdjustedDeltaTime) / Math.Max(osuCurrObj.AdjustedDeltaTime, osuLastObj.AdjustedDeltaTime), 2);
-            }
-
             if (osuCurrObj.BaseObject is Slider)
             {
                 // Reward sliders based on velocity.
                 sliderBonus = osuCurrObj.TravelDistance / osuCurrObj.TravelTime;
             }
 
+            foreach (OsuDifficultyHitObject osuLoopObj in retrievePastRelevantObjects(osuCurrObj))
+            {
+                double dot = getDotProduct(osuCurrObj, osuLoopObj);
+                double distance = getVectorDistance(osuCurrObj, osuLoopObj);
+                double deltaTime = osuCurrObj.StartTime - osuLoopObj.StartTime;
+
+                double similarity = 1.0 - Math.Max(dot, 0);
+
+                double distancePortion = -1 / (distance / OsuDifficultyHitObject.NORMALISED_DIAMETER + 1) + 1;
+
+                double rhythmNerf = Math.Pow(Math.Min(osuCurrObj.AdjustedDeltaTime, osuLoopObj.AdjustedDeltaTime) / Math.Max(osuCurrObj.AdjustedDeltaTime, osuLoopObj.AdjustedDeltaTime), 2);
+
+                double decay = similarityDecay(deltaTime);
+
+                double bonus = decay * similarity * rhythmNerf * distancePortion;
+                if (bonus < 0.001 || double.IsNaN(bonus)) bonus = 0;
+
+                vectorBonus += bonus;
+            }
+
             aimStrain += wiggleBonus * wiggle_multiplier;
-            aimStrain += velocityChangeBonus * velocity_change_multiplier;
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
             aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
@@ -163,6 +163,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             // Add in additional slider velocity bonus.
             if (withSliderTravelDistance)
                 aimStrain += sliderBonus * slider_multiplier;
+
+            // Apply similarity nerf
+            aimStrain += vectorBonus * 0.2;
 
             // Apply high circle size bonus
             aimStrain *= osuCurrObj.SmallCircleBonus;
@@ -181,5 +184,33 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));
 
         private static double calcAcuteAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(140), double.DegreesToRadians(40));
+
+        private static double similarityDecay(double ms) => Math.Pow(0.15, ms / 1000);
+
+        private static IEnumerable<OsuDifficultyHitObject> retrievePastRelevantObjects(OsuDifficultyHitObject current)
+        {
+            const int relevant_object_time = 1000;
+
+            for (int i = 0; i < current.Index; i++)
+            {
+                OsuDifficultyHitObject hitObject = (OsuDifficultyHitObject)current.Previous(i);
+
+                if (hitObject.IsNull() || current.StartTime - hitObject.StartTime > relevant_object_time)
+                    break;
+
+                yield return hitObject;
+            }
+        }
+
+        private static double getDotProduct(OsuDifficultyHitObject obj1, OsuDifficultyHitObject obj2)
+        {
+            double maxMagnitude = Math.Max(obj1.Vector.LengthSquared, obj2.Vector.LengthSquared);
+
+            double dot = Vector2.Dot(obj1.Vector, obj2.Vector) / maxMagnitude;
+
+            return dot;
+        }
+
+        private static double getVectorDistance(OsuDifficultyHitObject obj1, OsuDifficultyHitObject obj2) => (obj1.VectorMidpoint - obj2.VectorMidpoint).Length * obj1.ScalingFactor;
     }
 }

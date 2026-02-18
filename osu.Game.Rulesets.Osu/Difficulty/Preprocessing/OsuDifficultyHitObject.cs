@@ -117,6 +117,18 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double? Angle { get; private set; }
 
         /// <summary>
+        /// Movement vector from prev obj to this obj. Ignores sliders.
+        /// </summary>
+        public Vector2 Vector { get; private set; }
+
+        /// <summary>
+        /// Midpoint of the movement in space.
+        /// </summary>
+        public Vector2 VectorMidpoint { get; private set; }
+
+        public double ScalingFactor { get; private set; }
+
+        /// <summary>
         /// Selective bonus for maps with higher circle size.
         /// </summary>
         public double SmallCircleBonus { get; private set; }
@@ -261,6 +273,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
                 Angle = Math.Min(angle, sliderAngle);
             }
+
+            Vector = (BaseObject.StackedPosition - LastObject.StackedPosition) * scalingFactor;
+            VectorMidpoint = new Vector2((BaseObject.StackedPosition.X + LastObject.StackedPosition.X) / 2, (BaseObject.StackedPosition.Y + LastObject.StackedPosition.Y) / 2);
+            ScalingFactor = scalingFactor;
         }
 
         private void computeSliderCursorPosition()
