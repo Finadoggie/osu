@@ -190,7 +190,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double refBonus = highBpmBonus(refMs, distance);
             double realBonus = highBpmBonus(ms, distance);
 
-            return double.Lerp(realBonus, refBonus, 1);
+            return double.Lerp(realBonus, refBonus, 0.5);
         }
 
         private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));
