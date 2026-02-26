@@ -129,18 +129,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             if (Math.Max(prevVelocity, currVelocity) != 0)
             {
-                if (withSliderTravelDistance)
-                {
-                    // We want to use the average velocity over the whole object when awarding differences, not the individual jump and slider path velocities.
-                    prevVelocity = (osuLastObj.LazyJumpDistance + osuLastLastObj.TravelDistance) / osuLastObj.AdjustedDeltaTime;
-                    currVelocity = (osuCurrObj.LazyJumpDistance + osuLastObj.TravelDistance) / osuCurrObj.AdjustedDeltaTime;
-                }
+                double localCurrVelocity = withSliderTravelDistance ? (osuCurrObj.LazyJumpDistance + osuLastObj.TravelDistance) / osuCurrObj.AdjustedDeltaTime : currVelocity;
+                double localPrevVelocity = withSliderTravelDistance ? (osuLastObj.LazyJumpDistance + osuLastLastObj.TravelDistance) / osuLastObj.AdjustedDeltaTime : prevVelocity;
 
                 // Scale with ratio of difference compared to 0.5 * max dist.
-                double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(prevVelocity - currVelocity) / Math.Max(prevVelocity, currVelocity), 0, 1);
+                double distRatio = DifficultyCalculationUtils.Smoothstep(Math.Abs(localPrevVelocity - localCurrVelocity) / Math.Max(localPrevVelocity, localCurrVelocity), 0, 1);
 
                 // Reward for % distance up to 125 / strainTime for overlaps where velocity is still changing.
-                double overlapVelocityBuff = Math.Min(diameter * 1.25 / Math.Min(osuCurrObj.AdjustedDeltaTime, osuLastObj.AdjustedDeltaTime), Math.Abs(prevVelocity - currVelocity));
+                double overlapVelocityBuff = Math.Min(diameter * 1.25 / Math.Min(osuCurrObj.AdjustedDeltaTime, osuLastObj.AdjustedDeltaTime), Math.Abs(localPrevVelocity - localCurrVelocity));
 
                 velocityChangeBonus = overlapVelocityBuff * distRatio;
 
@@ -184,7 +180,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
         private static double rescale(double ms, double distance)
         {
-            const double ref_distance = 500;
+            const double ref_distance = 488;
             double refMs = ref_distance * ms / distance;
 
             double refBonus = highBpmBonus(refMs, distance);
