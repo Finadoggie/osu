@@ -96,7 +96,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 wideAngleBonus = calcWideAngleBonus(currAngle);
 
                 // Penalize angle repetition.
-                wideAngleBonus *= 0.1 + 1 - Math.Min(wideAngleBonus, Math.Pow(calcWideAngleBonus(lastAngle), 3));
+                wideAngleBonus *= 0.2 + 1 - Math.Min(wideAngleBonus, Math.Pow(calcWideAngleBonus(lastAngle), 3));
 
                 // Apply full wide angle bonus for distance more than SINGLE_SPACING_THRESHOLD
                 wideAngleBonus *= angleBonus * Math.Pow(DifficultyCalculationUtils.Smoothstep(currDistance, 0, SpeedAimEvaluator.SINGLE_SPACING_THRESHOLD), 3.0);
