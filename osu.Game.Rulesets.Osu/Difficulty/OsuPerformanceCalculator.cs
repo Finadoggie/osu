@@ -152,6 +152,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             double totalValue = DifficultyCalculationUtils.Norm(PERFORMANCE_NORM_EXPONENT, aimValue, speedValue, accuracyValue, cognitionValue) * multiplier;
 
+            totalValue *= computeNervesMultiplier(score, osuAttributes);
+
             return new OsuPerformanceAttributes
             {
                 Aim = aimValue,
@@ -167,6 +169,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty
                 SpeedDeviation = speedDeviation,
                 Total = totalValue
             };
+        }
+
+        private double computeNervesMultiplier(ScoreInfo score, OsuDifficultyAttributes osuAttributes)
+        {
+            // Bonus for many combo - it's harder to combo combo up for wombo combo.
+            double multiplier = (scoreMaxCombo < 1000
+                ? Math.Pow(scoreMaxCombo / 1000.0, 0.3)
+                : Math.Pow(scoreMaxCombo / 1000.0, 0.1));
+
+            return multiplier;
         }
 
         private double computeAimValue(ScoreInfo score, OsuDifficultyAttributes attributes)
@@ -291,11 +303,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             // Lots of arbitrary values from testing.
             // Considering to use derivation from perfect accuracy in a probabilistic manner - assume normal distribution.
             double accuracyValue = Math.Pow(1.52163, overallDifficulty) * Math.Pow(betterAccuracyPercentage, 24) * 2.83;
-
-            // Bonus for many hitcircles - it's harder to keep good accuracy up for longer.
-            accuracyValue *= amountHitObjectsWithAccuracy < 1000
-                ? Math.Pow(amountHitObjectsWithAccuracy / 1000.0, 0.3)
-                : Math.Pow(amountHitObjectsWithAccuracy / 1000.0, 0.1);
 
             // Increasing the accuracy value by object count for Blinds isn't ideal, so the minimum buff is given.
             if (score.Mods.Any(m => m is OsuModBlinds))
