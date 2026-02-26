@@ -166,7 +166,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             bonuses *= highBpmBonus(osuCurrObj.AdjustedDeltaTime, osuCurrObj.LazyJumpDistance);
 
-            double aimStrain = rescale(osuCurrObj.AdjustedDeltaTime, osuCurrObj.LazyJumpDistance);
+            double aimStrain = currVelocity * rescale(osuCurrObj.AdjustedDeltaTime, osuCurrObj.LazyJumpDistance);
 
             aimStrain += bonuses;
 
@@ -184,12 +184,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
         private static double rescale(double ms, double distance)
         {
-            double refDistance = 550;
-            double refMs = refDistance * ms / distance;
-            double refVelocity = refDistance / refMs;
-            double refStrain = refVelocity * highBpmBonus(refMs, OsuDifficultyHitObject.NORMALISED_DIAMETER);
+            const double ref_distance = 500;
+            double refMs = ref_distance * ms / distance;
 
-            return refStrain;
+            double refBonus = highBpmBonus(refMs, distance);
+            double realBonus = highBpmBonus(ms, distance);
+
+            return double.Lerp(realBonus, refBonus, 1);
         }
 
         private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));
