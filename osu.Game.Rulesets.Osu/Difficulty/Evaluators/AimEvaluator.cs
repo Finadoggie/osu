@@ -70,7 +70,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
             double velocityChangeBonus = 0;
             double wiggleBonus = 0;
 
-            double aimStrain = currVelocity; // Start strain with regular velocity.
+            double bonuses = 0; // Start strain with regular velocity.
 
             if (osuCurrObj.Angle != null && osuLastObj.Angle != null)
             {
@@ -154,20 +154,24 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 sliderBonus = osuCurrObj.TravelDistance / osuCurrObj.TravelTime;
             }
 
-            aimStrain += wiggleBonus * wiggle_multiplier;
-            aimStrain += velocityChangeBonus * velocity_change_multiplier;
+            bonuses += wiggleBonus * wiggle_multiplier;
+            bonuses += velocityChangeBonus * velocity_change_multiplier;
 
             // Add in acute angle bonus or wide angle bonus, whichever is larger.
-            aimStrain += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
+            bonuses += Math.Max(acuteAngleBonus * acute_angle_multiplier, wideAngleBonus * wide_angle_multiplier);
 
             // Add in additional slider velocity bonus.
             if (withSliderTravelDistance)
-                aimStrain += sliderBonus * slider_multiplier;
+                bonuses += sliderBonus * slider_multiplier;
+
+            bonuses *= highBpmBonus(osuCurrObj.AdjustedDeltaTime, osuCurrObj.LazyJumpDistance);
+
+            double aimStrain = rescale(osuCurrObj.AdjustedDeltaTime, osuCurrObj.LazyJumpDistance);
+
+            aimStrain += bonuses;
 
             // Apply high circle size bonus
             aimStrain *= osuCurrObj.SmallCircleBonus;
-
-            aimStrain *= highBpmBonus(osuCurrObj.AdjustedDeltaTime, osuCurrObj.LazyJumpDistance);
 
             return aimStrain;
         }
@@ -177,6 +181,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         // These objects do not require any movement, so it does not make sense to award them.
         private static double highBpmBonus(double ms, double distance) => 1 / (1 - Math.Pow(0.15, ms / 1000))
                                                                           * DifficultyCalculationUtils.Smootherstep(distance, 0, OsuDifficultyHitObject.NORMALISED_RADIUS);
+
+        private static double rescale(double ms, double distance)
+        {
+            double refDistance = 550;
+            double refMs = refDistance * ms / distance;
+            double refVelocity = refDistance / refMs;
+            double refStrain = refVelocity * highBpmBonus(refMs, OsuDifficultyHitObject.NORMALISED_DIAMETER);
+
+            return refStrain;
+        }
 
         private static double calcWideAngleBonus(double angle) => DifficultyCalculationUtils.Smoothstep(angle, double.DegreesToRadians(40), double.DegreesToRadians(140));
 
