@@ -210,11 +210,15 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             if (movements.Count < 0) return;
 
             // Calculates the enter and exit velocities for all movements recursively
+
             // Use loop for snap
-            for (int i = 0; i >= 0; i--)
-            {
-                movements[i].Reevaluate();
-            }
+            // for (int i = 0; i >= 0; i--)
+            // {
+            //     movements[i].Reevaluate();
+            // }
+
+            // Start at 0 for flow
+            movements[0].Reevaluate();
         }
 
         protected override Skill[] CreateSkills(IBeatmap beatmap, Mod[] mods, double clockRate)

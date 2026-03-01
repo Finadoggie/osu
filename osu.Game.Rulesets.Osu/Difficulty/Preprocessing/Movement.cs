@@ -4,7 +4,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osuTK;
 
@@ -63,7 +62,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         {
             bool significantDifference = false;
 
-            significantDifference = EvaluateAsSnap();
+            significantDifference = EvaluateAsFlow();
 
             return significantDifference;
         }
@@ -135,7 +134,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (lastForce is null)
             {
-                prevExitVelocity = Distance / Time;
+                prevExitVelocity = (End - Start).Length / Time;
                 prevExitAngle = AbsoluteAngle;
             }
             else
@@ -144,8 +143,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 prevExitAngle = lastForce.EndVelocityAngle;
             }
 
+            Vector2 displacement = End - Start;
+
             (double acceleration, double angle, double endVelocity, double endVelocityAngle) =
-                GetMovementKinematics(Start, End, prevExitVelocity, prevExitAngle, Time);
+                GetMovementKinematics(displacement, prevExitVelocity, prevExitAngle, Time);
 
             forces.Add(new Force()
             {
@@ -158,9 +159,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 EndVelocityAngle = endVelocityAngle,
                 CursorStart = Start,
                 CursorEnd = End,
-                ScalingFactor = ScalingFactor,
-                StartTime = StartTime
+                ScalingFactor = 1,
+                StartTime = StartTime,
+                EndsInClick = true
             });
+
+            forces[0].PrevForce = lastForce;
+            if (lastForce != null) lastForce.NextForce = forces[0];
 
             (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
 
@@ -176,7 +181,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         }
 
         public (double AccelationMagnitude, double AccelerationAngle, double EndVelocityMagnitude, double EndVelocityAngle)
-            GetMovementKinematics(Vector2 point1, Vector2 point2, double v1, double angle, double t)
+            GetMovementKinematics(Vector2 displacement, double v1, double angle, double t)
         {
             // 1. Guard against division by zero
             if (t <= 0) return (0, 0, 0, 0);
@@ -186,9 +191,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 (float)(v1 * Math.Cos(angle)),
                 (float)(v1 * Math.Sin(angle))
             );
-
-            // 3. Displacement Vector
-            Vector2 displacement = point2 - point1;
 
             // 4. Calculate Acceleration Vector: a = 2 * (d - v1*t) / t^2
             Vector2 accelVec = 2 * (displacement - (initialVelocity * (float)t)) / (float)(t * t);
