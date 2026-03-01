@@ -188,18 +188,32 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             return objects;
         }
 
+        public IEnumerable<Movement> GetMovements(double clockRate)
+        {
+            var objects = CreateDifficultyHitObjects(Beatmap, clockRate);
+            var movements = objects.SelectMany(x => ((OsuDifficultyHitObject)x).Movements);
+
+            return movements;
+        }
+
+        public IEnumerable<Force> GetForces(double clockRate)
+        {
+            var objects = CreateDifficultyHitObjects(Beatmap, clockRate);
+            var movements = objects.SelectMany(x => ((OsuDifficultyHitObject)x).Movements);
+            var forces = movements.SelectMany(x => x.Forces);
+
+            return forces;
+        }
+
         protected void PreCalculateAim(List<Movement> movements)
         {
-            if (movements.Count > 1) return;
+            if (movements.Count < 0) return;
 
             // Calculates the enter and exit velocities for all movements recursively
-            for (int i = movements.Count - 2; i >= 0; i--)
+            // Use loop for snap
+            for (int i = 0; i >= 0; i--)
             {
-                bool shouldContinueToReevaluate = true;
-
-                // Will reevaluate for as long as reevaluating will make a difference
-                for (int j = i; j < movements.Count && shouldContinueToReevaluate; j++)
-                    shouldContinueToReevaluate = movements[j].Reevaluate();
+                movements[i].Reevaluate();
             }
         }
 

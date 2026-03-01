@@ -2,6 +2,9 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using osu.Game.Graphics.UserInterface;
 using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osuTK;
 
@@ -21,12 +24,19 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public Movement? NextMovement { get; set; }
 
         public double Time => Math.Max(EndTime - StartTime, OsuDifficultyHitObject.MIN_DELTA_TIME);
-        public double Distance => (End * (OsuDifficultyHitObject.NORMALISED_RADIUS / (float)Math.Max(StartRadius, EndRadius)) - Start * (OsuDifficultyHitObject.NORMALISED_RADIUS / (float)Math.Max(EndRadius, StartRadius))).Length;
+        public double Distance => (End * ScalingFactor - Start * ScalingFactor).Length;
+        public float ScalingFactor => OsuDifficultyHitObject.NORMALISED_RADIUS / (float)Math.Max(StartRadius, EndRadius);
+        public double AbsoluteAngle => Math.Atan2((End - Start).Y, (End - Start).X);
 
-        public double ExitVelocity { get; private set; } = 0;
+        /// <summary>
+        /// Velocity of the cursor as it travels through the note
+        /// </summary>
+        public double ThroughVelocity { get; set; } = 0;
 
-        public double AimDifficulty { get; private set; } = 0;
-        public double AimStrain { get; private set; } = 0;
+        public double AimDifficulty { get; set; } = 0;
+        public double AimStrain { get; set; } = 0;
+
+        public List<Force> Forces { get; set; } = new List<Force>();
 
         public override string ToString()
         {
@@ -53,27 +63,152 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         {
             bool significantDifference = false;
 
-            double[] forces = [];
-
-            significantDifference = reevaluateAimDifficultyWith(forces) || significantDifference;
+            significantDifference = EvaluateAsSnap();
 
             return significantDifference;
         }
 
-        private bool reevaluateAimDifficultyWith(double[] forces)
+        protected bool EvaluateAsSnap(double angle = 0, Force? prevForce = null)
         {
-            (double newDifficulty, double newStrain) = AimEvaluator.EvaluateForces(forces);
+            double d = Distance / 2;
+            double t = Time / 2;
 
-            if (newDifficulty + newStrain > AimDifficulty + AimStrain)
+            double a1 = 2 * d / Math.Pow(t, 2);
+            double v1 = a1 * t;
+            double a2 = -a1;
+
+            List<Force> forces = new List<Force>();
+
+            forces.Add(new Force()
             {
-                AimDifficulty = newDifficulty;
-                AimStrain = newStrain;
-                return true;
+                Acceleration = a1,
+                ForceDuration = t,
+                AbsoluteAngle = AbsoluteAngle,
+                EndVelocity = v1,
+                CursorStart = Start,
+                CursorEnd = Start + (End / 2 - Start / 2),
+                ScalingFactor = ScalingFactor,
+                StartTime = StartTime
+            });
+            forces.Add(new Force()
+            {
+                Acceleration = a2,
+                ForceDuration = t,
+                AbsoluteAngle = AbsoluteAngle,
+                StartVelocity = v1,
+                StartVelocityAngle = AbsoluteAngle,
+                CursorStart = forces[0].CursorEnd,
+                CursorEnd = End,
+                EndsInClick = !IsNested,
+                ScalingFactor = ScalingFactor,
+                StartTime = StartTime + forces[0].ForceDuration,
+            });
+
+            forces[0].PrevForce = prevForce;
+            forces[0].NextForce = forces[1];
+            forces[1].PrevForce = forces[0];
+            forces[1].NextForce = NextMovement?.Forces.Count > 0 ? NextMovement.Forces[0] : null;
+
+            (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
+
+            if (difficulty + strain > AimDifficulty + AimStrain)
+            {
+                AimDifficulty = difficulty;
+                AimStrain = strain;
+
+                Forces = forces;
+                if (PreviousMovement?.Forces.Count > 0)
+                    PreviousMovement.Forces.Last().NextForce = Forces[0];
+
+                NextMovement?.EvaluateAsSnap(Angle(NextMovement), forces.Last());
             }
 
             return false;
         }
 
-        private static double getForce(double startVelocity, double endVelocity, double time) => (endVelocity - startVelocity) / time;
+        protected bool EvaluateAsFlow(Force? lastForce = null)
+        {
+            double prevExitVelocity;
+            double prevExitAngle;
+
+            List<Force> forces = new List<Force>();
+
+            if (lastForce is null)
+            {
+                prevExitVelocity = Distance / Time;
+                prevExitAngle = AbsoluteAngle;
+            }
+            else
+            {
+                prevExitVelocity = lastForce.EndVelocity;
+                prevExitAngle = lastForce.EndVelocityAngle;
+            }
+
+            (double acceleration, double angle, double endVelocity, double endVelocityAngle) =
+                GetMovementKinematics(Start, End, prevExitVelocity, prevExitAngle, Time);
+
+            forces.Add(new Force()
+            {
+                Acceleration = acceleration,
+                ForceDuration = Time,
+                AbsoluteAngle = angle,
+                StartVelocity = prevExitVelocity,
+                StartVelocityAngle = prevExitAngle,
+                EndVelocity = endVelocity,
+                EndVelocityAngle = endVelocityAngle,
+                CursorStart = Start,
+                CursorEnd = End,
+                ScalingFactor = ScalingFactor,
+                StartTime = StartTime
+            });
+
+            (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
+
+            if (difficulty + strain > AimDifficulty + AimStrain)
+            {
+                AimDifficulty = difficulty;
+                AimStrain = strain;
+
+                Forces = forces;
+            }
+
+            return NextMovement?.EvaluateAsFlow(forces.Last()) ?? false;
+        }
+
+        public (double AccelationMagnitude, double AccelerationAngle, double EndVelocityMagnitude, double EndVelocityAngle)
+            GetMovementKinematics(Vector2 point1, Vector2 point2, double v1, double angle, double t)
+        {
+            // 1. Guard against division by zero
+            if (t <= 0) return (0, 0, 0, 0);
+
+            // 2. Initial Velocity Vector (Cartesian)
+            Vector2 initialVelocity = new Vector2(
+                (float)(v1 * Math.Cos(angle)),
+                (float)(v1 * Math.Sin(angle))
+            );
+
+            // 3. Displacement Vector
+            Vector2 displacement = point2 - point1;
+
+            // 4. Calculate Acceleration Vector: a = 2 * (d - v1*t) / t^2
+            Vector2 accelVec = 2 * (displacement - (initialVelocity * (float)t)) / (float)(t * t);
+
+            // 5. Calculate Final Velocity Vector: vf = v1 + a*t
+            Vector2 finalVelocityVec = initialVelocity + (accelVec * (float)t);
+
+            // 6. Convert to Polar coordinates for the return tuple
+            double accelMag = accelVec.Length;
+            double accelAng = Math.Atan2(accelVec.Y, accelVec.X);
+
+            double finalVelMag = finalVelocityVec.Length;
+            double finalVelAng = Math.Atan2(finalVelocityVec.Y, finalVelocityVec.X);
+
+            return (accelMag, accelAng, finalVelMag, finalVelAng);
+        }
+
+        // Useful variables the need to be grabbed safely
+        public double LastThroughVelocity => PreviousMovement?.ThroughVelocity ?? 0;
+        public double NextDistance => NextMovement?.Distance ?? 0;
+        public double NextTime => NextMovement?.NextTime ?? 0;
     }
 }

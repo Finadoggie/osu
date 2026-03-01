@@ -91,7 +91,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             Preempt = BaseObject.TimePreempt / clockRate;
 
-            adjustPreviousObjectMovements();
+            // adjustPreviousObjectMovements();
             addInitialMovement((OsuHitObject)lastObject, clockRate);
             computeSliderMovements(clockRate);
         }
@@ -216,6 +216,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             float scalingFactor = NORMALISED_RADIUS / (float)slider.Radius; // lazySliderDistance is coded to be sensitive to scaling, this makes the maths easier with the thresholds being used.
 
+            bool addedAnything = false;
+
             for (int i = 1; i < nestedObjects.Count; i++)
             {
                 var currNestedObj = (OsuHitObject)nestedObjects[i];
@@ -268,10 +270,26 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     currCursorPosition = newCurrPosition;
                     currCursorTime = newCurrTime;
                     currRadius = nestedRadius;
+
+                    addedAnything = true;
                 }
 
                 if (i == nestedObjects.Count - 1)
                     LazyEndPosition = currCursorPosition;
+            }
+
+            if (!addedAnything)
+            {
+                Movements.Add(new Movement
+                {
+                    Start = currCursorPosition,
+                    StartTime = currCursorTime / clockRate,
+                    StartRadius = currRadius / scalingFactor,
+                    End = currCursorPosition,
+                    EndTime = currCursorTime + LazyTravelTime / clockRate,
+                    EndRadius = assumed_slider_radius / scalingFactor,
+                    IsNested = true
+                });
             }
         }
 
