@@ -8,7 +8,6 @@ using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Objects;
 using osu.Game.Rulesets.Osu.Mods;
 using osu.Game.Rulesets.Osu.Objects;
-using osu.Game.Rulesets.Osu.UI;
 using osu.Game.Rulesets.Scoring;
 using osuTK;
 
@@ -422,5 +421,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 lastDifficultyObject.PathLengthToMovementLengthRatio = Math.Pow(Math.Clamp(movementDistance / sliderLength, 0, 1), sliderLength * 0.001);
             }
         }
+
     }
 }
