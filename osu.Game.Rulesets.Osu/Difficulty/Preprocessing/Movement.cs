@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using osu.Game.Rulesets.Osu.Difficulty.Evaluators;
 using osuTK;
@@ -23,7 +24,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public Movement? NextMovement { get; set; }
 
         public double Time => Math.Max(EndTime - StartTime, OsuDifficultyHitObject.MIN_DELTA_TIME);
-        public double Distance => (End * ScalingFactor - Start * ScalingFactor).Length;
+        public double Distance => (End - Start).Length;
         public float ScalingFactor => 1;
         public double AbsoluteAngle => Math.Atan2((End - Start).Y, (End - Start).X);
 
@@ -35,7 +36,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double AimDifficulty { get; set; } = 0;
         public double AimStrain { get; set; } = 0;
 
-        public List<Force> Forces { get; set; } = new List<Force>();
+        public IReadOnlyList<Force>? Forces { get; set; }
 
         public override string ToString()
         {
@@ -58,86 +59,50 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// Reevaluates the difficulty and strain of the current movement.
         /// </summary>
         /// <returns>Returns true if the difference between past and current is significant.</returns>
-        public bool Reevaluate()
+        public void Reevaluate()
         {
-            bool significantDifference = false;
+            Force? previousForce = PreviousMovement?.Forces?.Last() ?? null;
 
-            significantDifference = EvaluateAsFlow();
+            const int num_divisions = 4;
+            const int num_types = 5;
 
-            return significantDifference;
-        }
+            List<IReadOnlyList<Force>> forcesSet = new List<IReadOnlyList<Force>>();
 
-        protected bool EvaluateAsSnap(double angle = 0, Force? prevForce = null)
-        {
-            double d = Distance / 2;
-            double t = Time / 2;
-
-            double a1 = 2 * d / Math.Pow(t, 2);
-            double v1 = a1 * t;
-            double a2 = -a1;
-
-            List<Force> forces = new List<Force>();
-
-            forces.Add(new Force()
+            for (int i = 0; i < num_types; i++)
             {
-                Acceleration = a1,
-                ForceDuration = t,
-                AbsoluteAngle = AbsoluteAngle,
-                StartVelocityAngle = prevForce?.AbsoluteAngle ?? AbsoluteAngle,
-                EndVelocity = v1,
-                StartPosition = Start,
-                EndPosition = Start + (End / 2 - Start / 2),
-                ScalingFactor = ScalingFactor,
-                StartTime = StartTime
-            });
-            forces.Add(new Force()
-            {
-                Acceleration = a2,
-                ForceDuration = t,
-                AbsoluteAngle = AbsoluteAngle,
-                StartVelocity = v1,
-                StartVelocityAngle = AbsoluteAngle,
-                StartPosition = forces[0].EndPosition,
-                EndPosition = End,
-                EndsInClick = !IsNested,
-                ScalingFactor = ScalingFactor,
-                StartTime = StartTime + forces[0].ForceDuration,
-            });
-
-            forces[0].PrevForce = prevForce;
-            forces[0].NextForce = forces[1];
-            forces[1].PrevForce = forces[0];
-            forces[1].NextForce = NextMovement?.Forces.Count > 0 ? NextMovement.Forces[0] : null;
-
-            (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
-
-            if (difficulty + strain > AimDifficulty + AimStrain)
-            {
-                AimDifficulty = difficulty;
-                AimStrain = strain;
-
-                Forces = forces;
-                if (PreviousMovement?.Forces.Count > 0)
-                    PreviousMovement.Forces.Last().NextForce = Forces[0];
+                for (int j = 0; j < num_divisions; j++)
+                {
+                    Force[]? newForce = CreateForces(1.0f / num_divisions * (j + 1), i, previousForce);
+                    if (newForce is not null) forcesSet.Add((Force[])newForce);
+                }
             }
 
-            NextMovement?.EvaluateAsSnap(Angle(NextMovement), forces.Last());
+            IReadOnlyList<Force> bestSet = forcesSet.MinBy(forces =>
+            {
+                (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
+                return difficulty + strain;
+            }) ?? CreateForces(0.0f, 0, previousForce)!; // Fallback, should never happen in practice
 
-            return false;
+            Forces = bestSet;
+            if (previousForce != null) previousForce.NextForce = Forces[0];
+
+            (AimDifficulty, AimStrain) = AimEvaluator.EvaluateForces(bestSet);
         }
 
-        protected bool EvaluateAsFlow(Force? prevForce = null)
+        protected Force[]? CreateForces(float flowPercent, int type, Force? prevForce = null)
         {
             double prevExitVelocity;
             double prevExitAngle;
             Vector2 prevEndPosition;
+            Vector2 endPosition = End;
+            float assumedRadius = (float)EndRadius;
 
             List<Force> forces = new List<Force>();
 
             if (prevForce is null)
             {
-                prevExitVelocity = Distance / Time;
-                prevExitAngle = AbsoluteAngle;
+                prevExitVelocity = 0;
+                prevExitAngle = 0;
                 prevEndPosition = Start;
             }
             else
@@ -151,11 +116,37 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             if (NextMovement is null)
             {
-                endVelocity = End - Start;
+                endVelocity = Vector2.Zero;
             }
             else
             {
-                endVelocity = (NextMovement.End - Start) / 2 / (float)Time;
+                // Match next angle
+                if (type == 1) endVelocity = (NextMovement.End - NextMovement.Start) / (float)Time * (flowPercent);
+                // Avg angles
+                else endVelocity = (NextMovement.End - prevEndPosition) / 2 / (float)Time * (flowPercent);
+
+                // Cheese
+                if (type == 2 || type == 3 || type == 4)
+                {
+                    float cheese_percent;
+
+                    if (type == 3) cheese_percent = 0.33f;
+                    else if (type == 4) cheese_percent = 0.67f;
+                    else cheese_percent = 1;
+
+                    Vector2 offset = (End - prevEndPosition - (NextMovement.End - prevEndPosition) / 2) / 2 * cheese_percent;
+                    float length = Math.Min(offset.Length, (float)EndRadius * cheese_percent * 0.9f);
+
+                    offset = new Vector2
+                    {
+                        X = length * (float)Math.Cos(GetAngle(offset)),
+                        Y = length * (float)Math.Sin(GetAngle(offset)),
+                    };
+
+                    endPosition = End - offset;
+
+                    assumedRadius = (float)EndRadius * (float)(1 - Math.Pow(length / EndRadius, 2.00));
+                }
             }
 
             Vector2 startVelocity = new Vector2
@@ -164,9 +155,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 Y = (float)(prevExitVelocity * Math.Sin(prevExitAngle)),
             };
 
-            AccelerationStep[] steps = CalculateTwoStepTrajectory(startVelocity, endVelocity, Start, End, (float)Time);
+            AccelerationStep[] steps = CalculateTwoStepTrajectory(startVelocity, endVelocity, prevEndPosition, endPosition, (float)Time);
 
-            forces.Add(new Force()
+            string label = Math.Round(flowPercent * 100).ToString(CultureInfo.InvariantCulture) + "%" + "\t Type " + type;
+
+            forces.Add(new Force
             {
                 Acceleration = steps[0].Acceleration.Length,
                 ForceDuration = steps[0].Duration,
@@ -178,9 +171,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 EndPosition = steps[0].EndPosition,
                 EndVelocity = steps[0].EndVelocity.Length,
                 EndVelocityAngle = GetAngle(steps[0].EndVelocity),
-                ScalingFactor = ScalingFactor,
+                AssumedRadius = assumedRadius,
+                AimType = label,
+                Parent = this,
             });
-            forces.Add(new Force()
+            forces.Add(new Force
             {
                 Acceleration = steps[1].Acceleration.Length,
                 ForceDuration = steps[1].Duration,
@@ -192,28 +187,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 EndPosition = steps[1].EndPosition,
                 EndVelocity = steps[1].EndVelocity.Length,
                 EndVelocityAngle = GetAngle(steps[1].EndVelocity),
-                ScalingFactor = ScalingFactor,
+                AssumedRadius = assumedRadius,
                 EndsInClick = !IsNested,
+                AimType = label,
+                Parent = this,
             });
 
             forces[0].PrevForce = prevForce;
             forces[0].NextForce = forces[1];
             forces[1].PrevForce = forces[0];
-            forces[1].NextForce = NextMovement?.Forces.Count > 0 ? NextMovement.Forces[0] : null;
 
-            (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
-
-            if (difficulty + strain > AimDifficulty + AimStrain)
-            {
-                AimDifficulty = difficulty;
-                AimStrain = strain;
-
-                Forces = forces;
-                if (PreviousMovement?.Forces.Count > 0)
-                    PreviousMovement.Forces.Last().NextForce = Forces[0];
-            }
-
-            return NextMovement?.EvaluateAsFlow(forces.Last()) ?? false;
+            return forces.ToArray();
         }
 
         public struct AccelerationStep

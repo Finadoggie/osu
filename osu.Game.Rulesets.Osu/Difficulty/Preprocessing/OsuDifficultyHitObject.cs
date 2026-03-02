@@ -241,7 +241,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     // This code is designed to prevent buffing situations where lazy end is actually a less efficient movement.
                     Vector2 lazyMovement = (Vector2)LazyEndPosition - currCursorPosition;
 
-                    if (lazyMovement.Length < currMovement.Length)
+                    if (true || lazyMovement.Length < currMovement.Length)
                     {
                         currMovement = lazyMovement;
                         newCurrTime = trackingEndTime;
@@ -250,11 +250,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
                 double currMovementLength = currMovement.Length * scalingFactor;
 
-                if (currMovementLength > nestedRadius)
+                if (true || currMovementLength > nestedRadius)
                 {
                     double movementLengthMultiplier = (currMovementLength - nestedRadius) / currMovementLength;
 
-                    var newCurrPosition = currCursorPosition + currMovement * (float)movementLengthMultiplier;
+                    var newCurrPosition = currCursorPosition + currMovement;
 
                     Movements.Add(new Movement
                     {

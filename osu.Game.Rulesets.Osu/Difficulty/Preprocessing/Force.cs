@@ -20,13 +20,17 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public double EndVelocity { get; set; } = 0;
         public double EndVelocityAngle { get; set; } = 0;
         public bool EndsInClick { get; set; } = false;
-        public float ScalingFactor { get; set; }
+        public float AssumedRadius { get; set; }
 
         public Vector2 StartPosition { get; set; }
         public Vector2 EndPosition { get; set; }
 
         public Force? NextForce { get; set; }
         public Force? PrevForce { get; set; }
+
+        public Movement Parent { get; set; }
+
+        public string AimType { get; set; }
 
         public Force() { }
 

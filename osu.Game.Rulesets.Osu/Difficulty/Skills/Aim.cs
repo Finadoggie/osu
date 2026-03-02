@@ -28,8 +28,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         private double currentAimStrain;
 
-        private double skillMultiplierAim => 29.00;
-
         private readonly List<double> sliderStrains = new List<double>();
 
         private double strainDecayAim(double ms) => Math.Pow(0.15, ms / 1000);
@@ -49,9 +47,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
                 double aimDecay = strainDecayAim(movement.Time);
                 currentAimStrain *= aimDecay;
-                currentAimStrain += movement.AimStrain * (1 - aimDecay) * skillMultiplierAim * 0;
+                currentAimStrain += movement.AimStrain;
 
-                double totalStrain = movement.AimDifficulty * skillMultiplierAim + currentAimStrain;
+                double totalStrain = movement.AimDifficulty * 6 + currentAimStrain;
+                totalStrain *= 2.35;
 
                 if (current.BaseObject is Slider)
                     sliderStrains.Add(totalStrain);

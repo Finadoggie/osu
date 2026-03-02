@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
 using osuTK;
@@ -11,24 +12,27 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 {
     public static class AimEvaluator
     {
-        private const double wide_angle_multiplier = 1.5;
+        private const double wide_angle_multiplier = 3.0;
         private const double acute_angle_multiplier = 2.3;
         private const double slider_multiplier = 1.5;
         private const double velocity_change_multiplier = 0.75;
         private const double wiggle_multiplier = 1.02; // WARNING: Increasing this multiplier beyond 1.02 reduces difficulty as distance increases. Refer to the desmos link above the wiggle bonus calculation
         private const double nested_movement_multiplier = 7.0;
 
-        public static (double difficulty, double strain) EvaluateForces(List<Force> forces)
+        public static (double difficulty, double strain) EvaluateForces(IReadOnlyList<Force> forces)
         {
             double currentDifficulty = 0;
             double currentStrain = 0;
 
             foreach (var force in forces)
             {
-                double currVelocity = Math.Abs(force.Acceleration * force.ForceDuration);
+                double currVelocity = force.Acceleration * force.ForceDuration;
+                currVelocity = Math.Abs(currVelocity);
 
                 double baseStrain = currVelocity;
                 double wideAngleBonus = 0;
+
+                double scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / force.AssumedRadius;
 
                 double? angle = force.Angle();
 
@@ -41,18 +45,63 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 // Add to running total
                 if (force.EndsInClick)
                 {
-                    double window = CalculateTimeOverCircle(force, force.EndPosition, OsuDifficultyHitObject.NORMALISED_RADIUS);
+                    // double window = CalculateTimeOverCircle(force, force.EndPosition, OsuDifficultyHitObject.NORMALISED_RADIUS);
+                    //
+                    // if (window == 0) window = double.PositiveInfinity;
+                    // currentDifficulty = 50 / window;
 
-                    if (window == 0) window = double.PositiveInfinity;
-                    currentDifficulty = 1;
+                    currentDifficulty = force.EndVelocity * scalingFactor;
                 }
 
                 // baseStrain += wideAngleBonus * wide_angle_multiplier;
 
-                currentStrain += baseStrain;
+                currentStrain += baseStrain * scalingFactor;
             }
 
-            return (currentDifficulty, currentStrain);
+            double followupStrain = 0;
+
+            // Get strain to reach next object
+            if (forces.Last().Parent.NextMovement is not null)
+            {
+                Force lastForce = forces.Last();
+                Movement next = lastForce.Parent.NextMovement!;
+                Vector2 displacement = next.End - next.Start;
+
+                followupStrain = AccelerateToNextObject(displacement, lastForce.EndVelocity, lastForce.EndVelocityAngle, next.Time) * next.Time;
+
+                double scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / lastForce.AssumedRadius;
+                followupStrain *= scalingFactor;
+            }
+
+            currentStrain *= 2;
+            followupStrain *= 2;
+            currentDifficulty *= 2;
+
+            return (currentDifficulty, currentStrain + followupStrain);
+        }
+
+        public static double
+            AccelerateToNextObject(Vector2 displacement, double v1, double angle, double t)
+        {
+            // 1. Guard against division by zero
+            if (t <= 0) return 0;
+
+            // 2. Initial Velocity Vector (Cartesian)
+            Vector2 initialVelocity = new Vector2(
+                (float)(v1 * Math.Cos(angle)),
+                (float)(v1 * Math.Sin(angle))
+            );
+
+            // 4. Calculate Acceleration Vector: a = 2 * (d - v1*t) / t^2
+            Vector2 accelVec = 2 * (displacement - (initialVelocity * (float)t)) / (float)(t * t);
+
+            // 5. Calculate Final Velocity Vector: vf = v1 + a*t
+            Vector2 finalVelocityVec = initialVelocity + (accelVec * (float)t);
+
+            // 6. Convert to Polar coordinates for the return tuple
+            double accelMag = accelVec.Length;
+
+            return accelMag;
         }
 
         public static double CalculateTimeOverCircle(Force? startForce, Vector2 circleCenter, double radius)
