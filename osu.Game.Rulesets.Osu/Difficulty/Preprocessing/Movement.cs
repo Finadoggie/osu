@@ -24,7 +24,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         public double Time => Math.Max(EndTime - StartTime, OsuDifficultyHitObject.MIN_DELTA_TIME);
         public double Distance => (End * ScalingFactor - Start * ScalingFactor).Length;
-        public float ScalingFactor => OsuDifficultyHitObject.NORMALISED_RADIUS / (float)Math.Max(StartRadius, EndRadius);
+        public float ScalingFactor => 1;
         public double AbsoluteAngle => Math.Atan2((End - Start).Y, (End - Start).X);
 
         /// <summary>
@@ -83,9 +83,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 Acceleration = a1,
                 ForceDuration = t,
                 AbsoluteAngle = AbsoluteAngle,
+                StartVelocityAngle = prevForce?.AbsoluteAngle ?? AbsoluteAngle,
                 EndVelocity = v1,
-                CursorStart = Start,
-                CursorEnd = Start + (End / 2 - Start / 2),
+                StartPosition = Start,
+                EndPosition = Start + (End / 2 - Start / 2),
                 ScalingFactor = ScalingFactor,
                 StartTime = StartTime
             });
@@ -96,8 +97,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 AbsoluteAngle = AbsoluteAngle,
                 StartVelocity = v1,
                 StartVelocityAngle = AbsoluteAngle,
-                CursorStart = forces[0].CursorEnd,
-                CursorEnd = End,
+                StartPosition = forces[0].EndPosition,
+                EndPosition = End,
                 EndsInClick = !IsNested,
                 ScalingFactor = ScalingFactor,
                 StartTime = StartTime + forces[0].ForceDuration,
@@ -118,54 +119,87 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 Forces = forces;
                 if (PreviousMovement?.Forces.Count > 0)
                     PreviousMovement.Forces.Last().NextForce = Forces[0];
-
-                NextMovement?.EvaluateAsSnap(Angle(NextMovement), forces.Last());
             }
+
+            NextMovement?.EvaluateAsSnap(Angle(NextMovement), forces.Last());
 
             return false;
         }
 
-        protected bool EvaluateAsFlow(Force? lastForce = null)
+        protected bool EvaluateAsFlow(Force? prevForce = null)
         {
             double prevExitVelocity;
             double prevExitAngle;
+            Vector2 prevEndPosition;
 
             List<Force> forces = new List<Force>();
 
-            if (lastForce is null)
+            if (prevForce is null)
             {
-                prevExitVelocity = (End - Start).Length / Time;
+                prevExitVelocity = Distance / Time;
                 prevExitAngle = AbsoluteAngle;
+                prevEndPosition = Start;
             }
             else
             {
-                prevExitVelocity = lastForce.EndVelocity;
-                prevExitAngle = lastForce.EndVelocityAngle;
+                prevExitVelocity = prevForce.EndVelocity;
+                prevExitAngle = prevForce.EndVelocityAngle;
+                prevEndPosition = prevForce.EndPosition;
             }
 
-            Vector2 displacement = End - Start;
+            Vector2 endVelocity;
 
-            (double acceleration, double angle, double endVelocity, double endVelocityAngle) =
-                GetMovementKinematics(displacement, prevExitVelocity, prevExitAngle, Time);
+            if (NextMovement is null)
+            {
+                endVelocity = End - Start;
+            }
+            else
+            {
+                endVelocity = (NextMovement.End - Start) / 2 / (float)Time;
+            }
+
+            Vector2 startVelocity = new Vector2
+            {
+                X = (float)(prevExitVelocity * Math.Cos(prevExitAngle)),
+                Y = (float)(prevExitVelocity * Math.Sin(prevExitAngle)),
+            };
+
+            AccelerationStep[] steps = CalculateTwoStepTrajectory(startVelocity, endVelocity, Start, End, (float)Time);
 
             forces.Add(new Force()
             {
-                Acceleration = acceleration,
-                ForceDuration = Time,
-                AbsoluteAngle = angle,
+                Acceleration = steps[0].Acceleration.Length,
+                ForceDuration = steps[0].Duration,
+                AbsoluteAngle = GetAngle(steps[0].Acceleration),
+                StartPosition = prevEndPosition,
+                StartTime = StartTime,
                 StartVelocity = prevExitVelocity,
                 StartVelocityAngle = prevExitAngle,
-                EndVelocity = endVelocity,
-                EndVelocityAngle = endVelocityAngle,
-                CursorStart = Start,
-                CursorEnd = End,
-                ScalingFactor = 1,
-                StartTime = StartTime,
-                EndsInClick = true
+                EndPosition = steps[0].EndPosition,
+                EndVelocity = steps[0].EndVelocity.Length,
+                EndVelocityAngle = GetAngle(steps[0].EndVelocity),
+                ScalingFactor = ScalingFactor,
+            });
+            forces.Add(new Force()
+            {
+                Acceleration = steps[1].Acceleration.Length,
+                ForceDuration = steps[1].Duration,
+                AbsoluteAngle = GetAngle(steps[1].Acceleration),
+                StartPosition = steps[0].EndPosition,
+                StartTime = StartTime + steps[0].Duration,
+                StartVelocity = steps[0].EndVelocity.Length,
+                StartVelocityAngle = GetAngle(steps[0].EndVelocity),
+                EndPosition = steps[1].EndPosition,
+                EndVelocity = steps[1].EndVelocity.Length,
+                EndVelocityAngle = GetAngle(steps[1].EndVelocity),
+                ScalingFactor = ScalingFactor,
+                EndsInClick = !IsNested,
             });
 
-            forces[0].PrevForce = lastForce;
-            if (lastForce != null) lastForce.NextForce = forces[0];
+            forces[0].PrevForce = prevForce;
+            forces[0].NextForce = forces[1];
+            forces[1].PrevForce = forces[0];
+            forces[1].NextForce = NextMovement?.Forces.Count > 0 ? NextMovement.Forces[0] : null;
 
             (double difficulty, double strain) = AimEvaluator.EvaluateForces(forces);
 
@@ -175,38 +209,72 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 AimStrain = strain;
 
                 Forces = forces;
+                if (PreviousMovement?.Forces.Count > 0)
+                    PreviousMovement.Forces.Last().NextForce = Forces[0];
             }
 
             return NextMovement?.EvaluateAsFlow(forces.Last()) ?? false;
         }
 
-        public (double AccelationMagnitude, double AccelerationAngle, double EndVelocityMagnitude, double EndVelocityAngle)
-            GetMovementKinematics(Vector2 displacement, double v1, double angle, double t)
+        public struct AccelerationStep
         {
-            // 1. Guard against division by zero
-            if (t <= 0) return (0, 0, 0, 0);
-
-            // 2. Initial Velocity Vector (Cartesian)
-            Vector2 initialVelocity = new Vector2(
-                (float)(v1 * Math.Cos(angle)),
-                (float)(v1 * Math.Sin(angle))
-            );
-
-            // 4. Calculate Acceleration Vector: a = 2 * (d - v1*t) / t^2
-            Vector2 accelVec = 2 * (displacement - (initialVelocity * (float)t)) / (float)(t * t);
-
-            // 5. Calculate Final Velocity Vector: vf = v1 + a*t
-            Vector2 finalVelocityVec = initialVelocity + (accelVec * (float)t);
-
-            // 6. Convert to Polar coordinates for the return tuple
-            double accelMag = accelVec.Length;
-            double accelAng = Math.Atan2(accelVec.Y, accelVec.X);
-
-            double finalVelMag = finalVelocityVec.Length;
-            double finalVelAng = Math.Atan2(finalVelocityVec.Y, finalVelocityVec.X);
-
-            return (accelMag, accelAng, finalVelMag, finalVelAng);
+            public Vector2 Acceleration;
+            public float Duration;
+            public Vector2 EndPosition;
+            public Vector2 EndVelocity;
         }
+
+        public static AccelerationStep[] CalculateTwoStepTrajectory(
+            Vector2 startVelocity,
+            Vector2 endVelocity,
+            Vector2 startPosition,
+            Vector2 endPosition,
+            float t)
+        {
+            if (t <= 0f)
+            {
+                throw new ArgumentException("Time 't' must be strictly greater than zero.", nameof(t));
+            }
+
+            // Split the duration evenly into two steps
+            float stepDuration = t / 2f;
+
+            // 1. Calculate the first acceleration vector (a0)
+            // Formula: a0 = (4 * (p1 - p0) - t * (3 * v0 + v1)) / t^2
+            Vector2 positionDelta = endPosition - startPosition;
+            Vector2 velocityTerm = (3f * startVelocity) + endVelocity;
+            Vector2 a0 = (4f * positionDelta - t * velocityTerm) / (t * t);
+
+            // 2. Calculate the second acceleration vector (a1)
+            // Formula: a1 = (2 * (v1 - v0) / t) - a0
+            Vector2 a1 = (2f * (endVelocity - startVelocity) / t) - a0;
+
+            // 3. Calculate the intermediate state (end of step 1)
+            Vector2 midVelocity = startVelocity + (a0 * stepDuration);
+            Vector2 midPosition = startPosition + (startVelocity * stepDuration) + (0.5f * a0 * stepDuration * stepDuration);
+
+            // 4. Construct and return the two steps
+            return new AccelerationStep[]
+            {
+                new AccelerationStep
+                {
+                    Acceleration = a0,
+                    Duration = stepDuration,
+                    EndPosition = midPosition,
+                    EndVelocity = midVelocity
+                },
+                new AccelerationStep
+                {
+                    Acceleration = a1,
+                    Duration = stepDuration,
+                    // We use the exact target parameters here to avoid tiny floating-point inaccuracies
+                    EndPosition = endPosition,
+                    EndVelocity = endVelocity
+                }
+            };
+        }
+
+        public double GetAngle(Vector2 v) => Math.Atan2(v.Y, v.X);
 
         // Useful variables the need to be grabbed safely
         public double LastThroughVelocity => PreviousMovement?.ThroughVelocity ?? 0;

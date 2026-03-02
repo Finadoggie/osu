@@ -211,12 +211,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty
 
             // Calculates the enter and exit velocities for all movements recursively
 
-            // Use loop for snap
-            // for (int i = 0; i >= 0; i--)
-            // {
-            //     movements[i].Reevaluate();
-            // }
-
             // Start at 0 for flow
             movements[0].Reevaluate();
         }

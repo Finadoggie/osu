@@ -41,10 +41,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 // Add to running total
                 if (force.EndsInClick)
                 {
-                    double window = CalculateTimeOverCircle(force, force.CursorEnd, OsuDifficultyHitObject.NORMALISED_RADIUS);
+                    double window = CalculateTimeOverCircle(force, force.EndPosition, OsuDifficultyHitObject.NORMALISED_RADIUS);
 
                     if (window == 0) window = double.PositiveInfinity;
-                    currentDifficulty += 100 / window;
+                    currentDifficulty = 1;
                 }
 
                 // baseStrain += wideAngleBonus * wide_angle_multiplier;
@@ -68,7 +68,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double cos = Math.Cos(current.AbsoluteAngle);
                 double sin = Math.Sin(current.AbsoluteAngle);
                 Vector2 dir = new Vector2((float)cos, (float)sin);
-                Vector2 startToCenter = circleCenter - current.CursorStart;
+                Vector2 startToCenter = circleCenter - current.StartPosition;
 
                 // 2. Project center onto the line to find closest approach
                 double projection = Vector2.Dot(startToCenter, dir);
@@ -90,7 +90,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     {
                         if (tEntry.HasValue)
                             entryTime = current.StartTime + tEntry.Value;
-                        else if (isPointInside(current.CursorStart, circleCenter, radius))
+                        else if (isPointInside(current.StartPosition, circleCenter, radius))
                             entryTime = current.StartTime; // Already inside at segment start
                     }
 

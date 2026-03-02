@@ -22,8 +22,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         public bool EndsInClick { get; set; } = false;
         public float ScalingFactor { get; set; }
 
-        public Vector2 CursorStart { get; set; }
-        public Vector2 CursorEnd { get; set; }
+        public Vector2 StartPosition { get; set; }
+        public Vector2 EndPosition { get; set; }
 
         public Force? NextForce { get; set; }
         public Force? PrevForce { get; set; }
