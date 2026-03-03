@@ -34,14 +34,19 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
         public Force() { }
 
-        public double? Angle()
+        public double? Angle(Force? other = null, bool signed = false)
         {
-            if (PrevForce == null) return null;
+            other ??= PrevForce;
+            if (other is null) return 0;
 
-            double angle = Math.Abs(AbsoluteAngle - PrevForce.AbsoluteAngle);
-            if (angle > double.DegreesToRadians(180)) angle -= 2 * Math.PI;
+            Vector2 v1 = EndPosition - other.EndPosition;
+            Vector2 v2 = EndPosition - StartPosition;
 
-            return angle;
+            float dot = Vector2.Dot(v1, v2);
+            float det = v1.X * v2.Y - v1.Y * v2.X;
+
+            double angle = Math.Atan2(det, dot);
+            return signed ? angle : Math.Abs(angle);
         }
     }
 }

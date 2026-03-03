@@ -23,24 +23,43 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
         {
             double currentDifficulty = 0;
             double currentStrain = 0;
+            double currentAgility = 0;
 
             foreach (var force in forces)
             {
-                double currVelocity = force.Acceleration * force.ForceDuration;
+                double scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / force.AssumedRadius;
+
+                double currVelocity = force.Acceleration * force.ForceDuration * scalingFactor;
                 currVelocity = Math.Abs(currVelocity);
 
                 double baseStrain = currVelocity;
+
+                double agilityBonus = 0;
                 double wideAngleBonus = 0;
 
-                double scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / force.AssumedRadius;
+                Force? previousForce = force.PrevForce;
 
-                double? angle = force.Angle();
-
-                if (angle != null)
+                if (previousForce != null)
                 {
-                    wideAngleBonus = calcWideAngleBonus(angle.Value);
-                    wideAngleBonus *= currVelocity;
+                    double deltaTime = force.ForceDuration + previousForce.ForceDuration;
+
+                    double startStopMultiplier = (force.Acceleration + previousForce.Acceleration) * deltaTime / (force.EndPosition - previousForce.StartPosition).Length;
+                    double angleMultiplier = DifficultyCalculationUtils.Smootherstep(double.RadiansToDegrees(force.Angle()!.Value), 40, 120);
+
+                    double baseBpm = 240 / (1 + startStopMultiplier);
+
+                    agilityBonus += Math.Max(0, Math.Pow(DifficultyCalculationUtils.MillisecondsToBPM(deltaTime / 2, 2) / baseBpm, 3) - 1);
+
+                    double prevScalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / previousForce.AssumedRadius;
+                    double prevVelocity = previousForce.Acceleration * previousForce.ForceDuration * prevScalingFactor;
+
+                    wideAngleBonus = calcWideAngleBonus(force.Angle()!.Value) * Math.Min(prevVelocity, currVelocity);
                 }
+
+                currentAgility += agilityBonus * 2;
+                baseStrain += wideAngleBonus;
+
+                currentStrain += baseStrain;
 
                 // Add to running total
                 if (force.EndsInClick)
@@ -50,12 +69,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     // if (window == 0) window = double.PositiveInfinity;
                     // currentDifficulty = 50 / window;
 
-                    currentDifficulty = force.EndVelocity * scalingFactor;
+                    currentDifficulty = Math.Pow(force.EndVelocity * scalingFactor, 2.0);
                 }
-
-                // baseStrain += wideAngleBonus * wide_angle_multiplier;
-
-                currentStrain += baseStrain * scalingFactor;
             }
 
             double followupStrain = 0;
@@ -73,11 +88,22 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 followupStrain *= scalingFactor;
             }
 
-            currentStrain *= 2;
-            followupStrain *= 2;
-            currentDifficulty *= 2;
+            // Console.Write("(");
+            // Console.Write(Math.Round(currentStrain));
+            // Console.Write("+");
+            // Console.Write(Math.Round(currentAgility));
+            // Console.Write(", ");
+            // Console.Write(Math.Round(currentDifficulty));
+            // Console.Write(")\t");
 
-            return (currentDifficulty, currentStrain + followupStrain);
+            currentStrain += followupStrain + currentAgility;
+
+            currentStrain *= 1;
+            currentDifficulty *= 8.0;
+
+            // Console.WriteLine($"Strain: {currentStrain}, Difficulty: {currentDifficulty}");
+
+            return (currentDifficulty, currentStrain);
         }
 
         public static double

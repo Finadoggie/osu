@@ -72,7 +72,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             {
                 for (int j = 0; j < num_divisions; j++)
                 {
-                    Force[]? newForce = CreateForces(1.0f / num_divisions * (j + 1), i, previousForce);
+                    Force[]? newForce = CreateForces(1.0f / (num_divisions) * (j + 1), i, previousForce);
                     if (newForce is not null) forcesSet.Add((Force[])newForce);
                 }
             }

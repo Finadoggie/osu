@@ -47,10 +47,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
                 double aimDecay = strainDecayAim(movement.Time);
                 currentAimStrain *= aimDecay;
-                currentAimStrain += movement.AimStrain;
+                currentAimStrain += movement.AimStrain * (1 - aimDecay);
 
-                double totalStrain = movement.AimDifficulty * 6 + currentAimStrain;
-                totalStrain *= 2.35;
+                double totalStrain = 1;
+                totalStrain *= 0.5;
 
                 if (current.BaseObject is Slider)
                     sliderStrains.Add(totalStrain);
