@@ -215,10 +215,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                     double angleDifference = Math.Abs(current.NormalisedVectorAngle.Value - loopObj.NormalisedVectorAngle.Value)
                                              * (1 - velocity_ratio_weight);
 
-                    double velocityRatio = Math.Acos(1 -
-                                                     Math.Min(current.LazyJumpDistance / current.AdjustedDeltaTime, loopObj.LazyJumpDistance / loopObj.AdjustedDeltaTime) /
-                                                     Math.Max(current.LazyJumpDistance / current.AdjustedDeltaTime, loopObj.LazyJumpDistance / loopObj.AdjustedDeltaTime)
-                    ) * velocity_ratio_weight / 8;
+                    double velocityRatio = (1 -
+                                            Math.Min(current.LazyJumpDistance / current.AdjustedDeltaTime, loopObj.LazyJumpDistance / loopObj.AdjustedDeltaTime) /
+                                            Math.Max(current.LazyJumpDistance / current.AdjustedDeltaTime, loopObj.LazyJumpDistance / loopObj.AdjustedDeltaTime)
+                        ) * Math.PI * velocity_ratio_weight / 8;
 
                     constantAngleCount += Math.Cos(8 * Math.Min(double.DegreesToRadians(11.25), angleDifference + velocityRatio));
                 }
