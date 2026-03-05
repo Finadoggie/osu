@@ -210,7 +210,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 if (loopObj.NormalisedVectorAngle.IsNotNull() && current.NormalisedVectorAngle.IsNotNull() && current.LazyJumpDistance > 0 && loopObj.LazyJumpDistance > 0)
                 {
-                    const double velocity_ratio_weight = 0.5;
+                    const double velocity_ratio_weight = 0.1;
 
                     double angleDifference = Math.Abs(current.NormalisedVectorAngle.Value - loopObj.NormalisedVectorAngle.Value)
                                              * (1 - velocity_ratio_weight);
