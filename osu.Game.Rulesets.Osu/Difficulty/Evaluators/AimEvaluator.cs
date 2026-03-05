@@ -215,7 +215,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                                            Math.Min(current.LazyJumpDistance / current.AdjustedDeltaTime, loopObj.LazyJumpDistance / loopObj.AdjustedDeltaTime) /
                                            Math.Max(current.LazyJumpDistance / current.AdjustedDeltaTime, loopObj.LazyJumpDistance / loopObj.AdjustedDeltaTime);
 
-                    constantAngleCount += Math.Cos(8 * Math.Min(double.DegreesToRadians(11.25), angleDifference * velocityRatio));
+                    constantAngleCount += Math.Cos(8 * Math.Min(double.DegreesToRadians(11.25), angleDifference * (1 + velocityRatio)));
                 }
 
                 notesProcessed++;
