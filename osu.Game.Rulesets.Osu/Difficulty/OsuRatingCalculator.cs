@@ -2,9 +2,11 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Mods;
+using osu.Game.Rulesets.Osu.Difficulty.Skills;
 using osu.Game.Rulesets.Osu.Mods;
 
 namespace osu.Game.Rulesets.Osu.Difficulty
@@ -46,6 +48,26 @@ namespace osu.Game.Rulesets.Osu.Difficulty
             ratingMultiplier *= 0.98 + Math.Pow(Math.Max(0, overallDifficulty), 2) / 2500;
 
             return aimRating * Math.Cbrt(ratingMultiplier);
+        }
+
+        public double ComputeAimLengthBonus(Aim aim)
+        {
+            double bonus = 0;
+
+            List<double> strains = aim.GetReducedStrains().ToList();
+
+            for (int i = 0; i < strains.Count; i++)
+            {
+                double difficulty = strains[i] * 10;
+                double performance = OsuStrainSkill.DifficultyToPerformance(ComputeAimRating(difficulty));
+                double multiplier = Aim.LengthBonusCurve(i) - Aim.LengthBonusCurve(i - 1);
+
+                double currStrainBonus = performance * multiplier;
+
+                bonus += currStrainBonus;
+            }
+
+            return bonus * Aim.LengthBonusMultiplier;
         }
 
         public double ComputeSpeedRating(double speedDifficultyValue)

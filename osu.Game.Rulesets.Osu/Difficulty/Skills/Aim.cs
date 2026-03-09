@@ -36,6 +36,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private double skillMultiplierTotal => 1.0;
         private double meanExponent => 1.2;
 
+        public static double LengthBonusMultiplier = 0.58;
+
         private readonly List<double> sliderStrains = new List<double>();
 
         private double strainDecayAim(double ms) => Math.Pow(0.15, ms / 1000);
@@ -94,5 +96,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         public double CountTopWeightedSliders(double difficultyValue)
             => OsuStrainUtils.CountTopWeightedSliders(sliderStrains, difficultyValue);
+
+        public static double LengthBonusCurve(double strains) => Math.Log(strains / 500.0 + 1);
     }
 }
