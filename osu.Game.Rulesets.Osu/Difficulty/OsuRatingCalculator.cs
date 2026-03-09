@@ -54,7 +54,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty
         {
             double bonus = 0;
 
-            List<double> strains = aim.GetReducedStrains().ToList();
+            List<double> strains = aim.GetObjectDifficulties().ToList();
 
             for (int i = 0; i < strains.Count; i++)
             {
