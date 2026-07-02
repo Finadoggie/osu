@@ -166,9 +166,17 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <summary>
         /// Saves the current peak strain level to the list of strain peaks, which will be used to calculate an overall difficulty.
         /// </summary>
-        private void saveCurrentPeak(double sectionLength)
+        private StrainPeak saveCurrentPeak(double sectionLength)
         {
-            strainPeaks.AddInPlace(new StrainPeak(currentSectionPeak, sectionLength));
+            if (finalPeak != null)
+            {
+                strainPeaks.Remove(finalPeak.Value);
+                finalPeak = null;
+            }
+
+            StrainPeak peak = new StrainPeak(currentSectionPeak, sectionLength);
+
+            strainPeaks.AddInPlace(peak);
             totalLength += sectionLength;
 
             // Remove from the back of our strain peaks if there's any which are too deep to contribute to difficulty.
@@ -178,6 +186,8 @@ namespace osu.Game.Rulesets.Difficulty.Skills
                 totalLength -= strainPeaks[^1].SectionLength;
                 strainPeaks.RemoveAt(strainPeaks.Count - 1);
             }
+
+            return peak;
         }
 
         /// <summary>
@@ -200,7 +210,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <returns>The peak strain.</returns>
         protected abstract double CalculateInitialStrain(double time, DifficultyHitObject current);
 
-        private bool peaksFinalised;
+        private StrainPeak? finalPeak;
 
         /// <summary>
         /// Returns a live enumerable of the peak strains for each <see cref="MaxSectionLength"/> section of the beatmap,
@@ -208,13 +218,20 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// </summary>
         public IEnumerable<StrainPeak> GetCurrentStrainPeaks()
         {
-            if (!peaksFinalised)
+            SaveFinalPeak();
+            return strainPeaks;
+        }
+
+        public void SaveFinalPeak()
+        {
+            if (finalPeak != null)
             {
-                saveCurrentPeak(currentSectionEnd - currentSectionBegin);
-                peaksFinalised = true;
+                strainPeaks.Remove(finalPeak.Value);
+                finalPeak = null;
             }
 
-            return strainPeaks;
+            finalPeak = new StrainPeak(currentSectionPeak, currentSectionEnd - currentSectionBegin);
+            strainPeaks.AddInPlace(finalPeak.Value);
         }
 
         /// <summary>
@@ -238,7 +255,7 @@ namespace osu.Game.Rulesets.Difficulty.Skills
         /// <summary>
         /// Used to store the difficulty of a section of a map.
         /// </summary>
-        public readonly struct StrainPeak : IComparable<StrainPeak>
+        public readonly record struct StrainPeak : IComparable<StrainPeak>
         {
             public StrainPeak(double value, double sectionLength)
             {
