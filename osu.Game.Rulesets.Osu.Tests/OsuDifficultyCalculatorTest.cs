@@ -1,6 +1,7 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
+using System.Linq;
 using NUnit.Framework;
 using osu.Game.Beatmaps;
 using osu.Game.Rulesets.Difficulty;
@@ -55,6 +56,28 @@ namespace osu.Game.Rulesets.Osu.Tests
                 // Platform-dependent math functions (Pow, Cbrt, Exp, etc) may result in minute differences.
                 Assert.That(attributes.StarRating, Is.EqualTo(expectedStarRating).Within(0.00001));
                 Assert.That(attributes.MaxCombo, Is.EqualTo(expectedMaxCombo));
+            }
+        }
+
+        [TestCase("diffcalc-test")]
+        [TestCase("zero-length-sliders")]
+        [TestCase("very-fast-slider")]
+        [TestCase("nan-slider")]
+        public void TestTimedAttributes(string name)
+        {
+            var beatmap = GetBeatmap(name);
+
+            var timedAttributes = CreateDifficultyCalculator(beatmap).CalculateTimed();
+            var trueTimedAttributes = CreateDifficultyCalculator(beatmap).CalculateTrueTimed();
+
+            Assert.That(timedAttributes.Count == trueTimedAttributes.Count);
+
+            for (int i = 0; i < timedAttributes.Count; i++)
+            {
+                var timedAttr = timedAttributes.ElementAt(i).Attributes;
+                var trueAttr = trueTimedAttributes.ElementAt(i).Attributes;
+
+                Assert.That(timedAttr.StarRating, Is.EqualTo(trueAttr.StarRating).Within(0.00001));
             }
         }
 

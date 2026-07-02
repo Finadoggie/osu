@@ -147,6 +147,60 @@ namespace osu.Game.Rulesets.Difficulty
             return attribs;
         }
 
+        public List<TimedDifficultyAttributes> CalculateTrueTimed(CancellationToken cancellationToken = default)
+            => CalculateTrueTimed(Array.Empty<Mod>(), cancellationToken);
+
+        public List<TimedDifficultyAttributes> CalculateTrueTimed([NotNull] IEnumerable<Mod> mods, CancellationToken cancellationToken = default)
+        {
+            using var timedCancellationSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+
+            if (!cancellationToken.CanBeCanceled)
+                cancellationToken = timedCancellationSource.Token;
+
+            cancellationToken.ThrowIfCancellationRequested();
+            // ReSharper disable once PossiblyMistakenUseOfCancellationToken
+            preProcess(mods, cancellationToken);
+
+            var attribs = new List<TimedDifficultyAttributes>();
+
+            if (!Beatmap.HitObjects.Any())
+                return attribs;
+
+            var progressiveBeatmap = new ProgressiveCalculationBeatmap(Beatmap);
+            var difficultyObjects = getDifficultyHitObjects().ToArray();
+
+            List<DifficultyHitObject> currDifficultyObjects = new List<DifficultyHitObject>();
+
+            int currentIndex = 0;
+
+            foreach (var obj in Beatmap.HitObjects)
+            {
+                progressiveBeatmap.HitObjects.Add(obj);
+
+                var skills = CreateSkills(Beatmap, playableMods);
+
+                while (currentIndex < difficultyObjects.Length && difficultyObjects[currentIndex].BaseObject.GetEndTime() <= obj.GetEndTime())
+                {
+                    currDifficultyObjects.Add(difficultyObjects[currentIndex]);
+
+                    currentIndex++;
+                }
+
+                foreach (var hitObject in currDifficultyObjects)
+                {
+                    foreach (var skill in skills)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        skill.Process(hitObject);
+                    }
+                }
+
+                attribs.Add(new TimedDifficultyAttributes(obj.GetEndTime(), CreateDifficultyAttributes(progressiveBeatmap, playableMods, skills)));
+            }
+
+            return attribs;
+        }
+
         /// <summary>
         /// Calculates the difficulty of the beatmap using all mod combinations applicable to the beatmap.
         /// </summary>
