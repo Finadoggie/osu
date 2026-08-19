@@ -442,7 +442,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 }
 
                 // Use the path distance if it's less than the tick-based distance
-                if (i == positions.Count - 1)
+                if (i == positions.Count - 1 && currDistance < LazyTravelDistance)
                 {
                     LazyTravelDistance = currDistance;
                     LazyEndPosition = currCursorPosition;
