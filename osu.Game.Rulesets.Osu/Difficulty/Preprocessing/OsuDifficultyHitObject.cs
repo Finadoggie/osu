@@ -122,6 +122,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// </summary>
         public double? NormalisedVectorAngle { get; private set; }
 
+        public List<(Vector2 position, double time, double radius)> PolledSliderPositions { get; private set; }
+
         /// <summary>
         /// Selective bonus for maps with higher circle size.
         /// </summary>
@@ -138,6 +140,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             // Capped to 25ms to prevent difficulty calculation breaking from simultaneous objects.
             AdjustedDeltaTime = Math.Max(DeltaTime, MIN_DELTA_TIME);
             LastObjectEndDeltaTime = Previous() is DifficultyHitObject last ? Math.Max(StartTime - last.EndTime, MIN_DELTA_TIME) : AdjustedDeltaTime;
+
+            PolledSliderPositions = new List<(Vector2 position, double time, double radius)>();
 
             computeSliderCursorPosition();
             setDistances(clockRate);
@@ -375,14 +379,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             }
 
             // Now, calculate distance assuming that the user does follow the slider ball
-            // Poll the slider at 60hz
-            List<(Vector2 position, double time, double radius)> positions = new List<(Vector2 position, double time, double radius)>();
-
             // Avoids long calculations for slow sliders
             const double min_polling_dist = 20; // 2/5th of a radius
 
             double minStep = Math.Max(16.67, min_polling_dist / (slider.Distance * scalingFactor / slider.Duration));
 
+            // Poll the slider at 60hz
             for (double time = slider.StartTime; time < trackingEndTime; time += minStep)
             {
                 double travelTime = time - slider.StartTime;
@@ -394,32 +396,33 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     pathTime %= 1;
 
                 var currPosition = slider.StackedPosition + slider.Path.PositionAt(pathTime);
-                positions.Add((currPosition, time, assumed_slider_radius));
+                PolledSliderPositions.Add((currPosition, time, assumed_slider_radius));
             }
 
+            // Add all ticks to ensure the slider is still followed perfectly
             for (int i = 1; i < nestedObjects.Count; i++)
             {
                 var obj = (OsuHitObject)nestedObjects[i];
-                positions.Add((obj.StackedPosition, obj.StartTime, obj is SliderRepeat ? NORMALISED_RADIUS : assumed_slider_radius)); // Radius ensures kaede doesn't die horrifically
+                PolledSliderPositions.Add((obj.StackedPosition, obj.StartTime, obj is SliderRepeat ? NORMALISED_RADIUS : assumed_slider_radius)); // Radius ensures kaede doesn't die horrifically
             }
 
-            positions = positions.OrderBy(p => p.time).ToList();
+            PolledSliderPositions = PolledSliderPositions.OrderBy(p => p.time).ToList();
 
             double currDistance = 0;
             currCursorPosition = slider.StackedPosition;
 
             // Calculate distance based on objects, assuming the slider ball isn't followed
-            for (int i = 0; i < positions.Count; i++)
+            for (int i = 0; i < PolledSliderPositions.Count; i++)
             {
-                var currMovementObj = positions[i];
+                var currMovementObj = PolledSliderPositions[i];
 
                 Vector2 currMovement = Vector2.Subtract(currMovementObj.position, currCursorPosition);
                 double currMovementLength = scalingFactor * currMovement.Length;
 
                 // Amount of movement required so that the cursor position needs to be updated.
-                double requiredMovement = positions[i].radius;
+                double requiredMovement = PolledSliderPositions[i].radius;
 
-                if (i == positions.Count - 1)
+                if (i == PolledSliderPositions.Count - 1)
                 {
                     // The end of a slider has special aim rules due to the relaxed time constraint on position.
                     // There is both a lazy end position as well as the actual end slider position. We assume the player takes the simpler movement.
@@ -442,7 +445,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                 }
 
                 // Use the path distance if it's less than the tick-based distance
-                if (i == positions.Count - 1 && currDistance < LazyTravelDistance)
+                if (i == PolledSliderPositions.Count - 1 && currDistance < LazyTravelDistance)
                 {
                     LazyTravelDistance = currDistance;
                     LazyEndPosition = currCursorPosition;

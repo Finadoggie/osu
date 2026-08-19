@@ -30,7 +30,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
 
             const double wide_angle_multiplier = 9.67;
             const double acute_angle_multiplier = 2.41;
-            const double slider_multiplier = 1.5;
+            const double slider_multiplier = 1.25;
             const double velocity_change_multiplier = 0.9;
 
             // WARNING: Increasing this multiplier beyond 1.02 reduces difficulty as distance increases. Refer to the desmos link above the wiggle bonus calculation

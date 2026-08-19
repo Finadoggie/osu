@@ -7,6 +7,7 @@ using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Osu.Objects;
+using osuTK;
 
 namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 {
@@ -14,6 +15,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
     {
         private const double reading_window_size = 3000; // 3 seconds
         private const double distance_influence_threshold = OsuDifficultyHitObject.NORMALISED_DIAMETER * 1.5; // 1.5 circles distance between centers
+        private const double past_slider_nerf_factor = 0.75;
+        private const double future_slider_nerf_factor = 0.75;
 
         public static double EvaluateDifficultyOf(DifficultyHitObject current, bool hidden)
         {
@@ -146,10 +149,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
             foreach (var loopObj in retrievePastVisibleObjects(currObj))
             {
-                double loopDifficulty = currObj.OpacityAt(loopObj.BaseObject.StartTime, false);
+                double loopBaseDifficulty = currObj.OpacityAt(loopObj.BaseObject.StartTime, false);
 
                 // When aiming an object small distances mean previous objects may be cheesed, so it doesn't matter whether they were arranged confusingly.
-                loopDifficulty *= DiffUtils.Smootherstep(loopObj.LazyJumpDistance, 15, distance_influence_threshold);
+                double loopDifficulty = loopBaseDifficulty * DiffUtils.Smootherstep(loopObj.LazyJumpDistance, 15, distance_influence_threshold);
 
                 // Account less for objects close to the max reading window
                 double timeBetweenCurrAndLoopObj = currObj.StartTime - loopObj.StartTime;
@@ -157,6 +160,22 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
 
                 loopDifficulty *= timeNerfFactor;
                 pastObjectDifficultyInfluence += loopDifficulty;
+
+                for (int i = 0; i < loopObj.PolledSliderPositions.Count; i++)
+                {
+                    var curr = loopObj.PolledSliderPositions[i];
+                    Vector2 prevPos = i == 0 ? ((OsuHitObject)loopObj.BaseObject).StackedPosition : loopObj.PolledSliderPositions[i - 1].position;
+
+                    double scalingFactor = OsuDifficultyHitObject.NORMALISED_RADIUS / ((OsuHitObject)loopObj.BaseObject).Radius;
+
+                    loopDifficulty = loopBaseDifficulty * DiffUtils.Smootherstep((curr.position - prevPos).Length * scalingFactor, 15, distance_influence_threshold);
+
+                    timeBetweenCurrAndLoopObj = currObj.StartTime - curr.time;
+                    timeNerfFactor = getTimeNerfFactor(timeBetweenCurrAndLoopObj);
+
+                    loopDifficulty *= timeNerfFactor * past_slider_nerf_factor;
+                    pastObjectDifficultyInfluence += loopDifficulty;
+                }
             }
 
             return pastObjectDifficultyInfluence;
@@ -195,6 +214,14 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators
                 double timeNerfFactor = getTimeNerfFactor(timeBetweenCurrAndLoopObj);
 
                 visibleObjectCount += hitObject.OpacityAt(current.BaseObject.StartTime, false) * timeNerfFactor;
+
+                foreach (var pos in hitObject.PolledSliderPositions)
+                {
+                    timeBetweenCurrAndLoopObj = pos.time - current.StartTime;
+                    timeNerfFactor = getTimeNerfFactor(timeBetweenCurrAndLoopObj);
+
+                    visibleObjectCount += hitObject.OpacityAt(current.BaseObject.StartTime, false) * timeNerfFactor * future_slider_nerf_factor;
+                }
 
                 hitObject = (OsuDifficultyHitObject?)hitObject.Next(0);
             }
