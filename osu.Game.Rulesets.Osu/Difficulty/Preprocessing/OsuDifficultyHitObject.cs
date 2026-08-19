@@ -377,7 +377,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             // Poll the slider at 60hz
             List<(Vector2 position, double time)> positions = new List<(Vector2 position, double time)>();
 
-            for (double time = slider.StartTime; time < trackingEndTime; time += 16.67)
+            // Avoids long calculations for slow sliders
+            const double min_polling_dist = 20; // 2/5th of a radius
+
+            double minStep = Math.Max(16.67, min_polling_dist / (slider.Distance * scalingFactor / slider.Duration));
+
+            for (double time = slider.StartTime; time < trackingEndTime; time += minStep)
             {
                 double travelTime = time - slider.StartTime;
 
