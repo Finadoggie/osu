@@ -330,7 +330,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             else
                 endTimeMin %= 1;
 
-            LazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
+            var tempLazyEndPosition = slider.StackedPosition + slider.Path.PositionAt(endTimeMin); // temporary lazy end position until a real result can be derived.
+            LazyEndPosition = tempLazyEndPosition;
 
             Vector2 currCursorPosition = slider.StackedPosition;
 
@@ -375,7 +376,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             // Now, calculate distance assuming that the user does follow the slider ball
             // Poll the slider at 60hz
-            List<(Vector2 position, double time)> positions = new List<(Vector2 position, double time)>();
+            List<(Vector2 position, double time, double radius)> positions = new List<(Vector2 position, double time, double radius)>();
 
             // Avoids long calculations for slow sliders
             const double min_polling_dist = 20; // 2/5th of a radius
@@ -393,13 +394,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     pathTime %= 1;
 
                 var currPosition = slider.StackedPosition + slider.Path.PositionAt(pathTime);
-                positions.Add((currPosition, time));
+                positions.Add((currPosition, time, assumed_slider_radius));
             }
 
             for (int i = 1; i < nestedObjects.Count; i++)
             {
                 var obj = (OsuHitObject)nestedObjects[i];
-                positions.Add((obj.StackedPosition, obj.StartTime));
+                positions.Add((obj.StackedPosition, obj.StartTime, obj is SliderRepeat ? NORMALISED_RADIUS : assumed_slider_radius)); // Radius ensures kaede doesn't die horrifically
             }
 
             positions = positions.OrderBy(p => p.time).ToList();
@@ -410,13 +411,13 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             // Calculate distance based on objects, assuming the slider ball isn't followed
             for (int i = 0; i < positions.Count; i++)
             {
-                var currMovementObj = positions[i].position;
+                var currMovementObj = positions[i];
 
-                Vector2 currMovement = Vector2.Subtract(currMovementObj, currCursorPosition);
+                Vector2 currMovement = Vector2.Subtract(currMovementObj.position, currCursorPosition);
                 double currMovementLength = scalingFactor * currMovement.Length;
 
                 // Amount of movement required so that the cursor position needs to be updated.
-                const double required_movement = assumed_slider_radius;
+                double requiredMovement = positions[i].radius;
 
                 if (i == positions.Count - 1)
                 {
@@ -424,7 +425,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     // There is both a lazy end position as well as the actual end slider position. We assume the player takes the simpler movement.
                     // For sliders that are circular, the lazy end position may actually be farther away than the sliders true end.
                     // This code is designed to prevent buffing situations where lazy end is actually a less efficient movement.
-                    Vector2 lazyMovement = Vector2.Subtract((Vector2)LazyEndPosition, currCursorPosition);
+                    Vector2 lazyMovement = Vector2.Subtract(tempLazyEndPosition, currCursorPosition);
 
                     if (lazyMovement.Length < currMovement.Length)
                         currMovement = lazyMovement;
@@ -432,20 +433,20 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
                     currMovementLength = scalingFactor * currMovement.Length;
                 }
 
-                if (currMovementLength > required_movement)
+                if (currMovementLength > requiredMovement)
                 {
                     // this finds the positional delta from the required radius and the current position, and updates the currCursorPosition accordingly, as well as rewarding distance.
-                    currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - required_movement) / currMovementLength)));
-                    currMovementLength *= (currMovementLength - required_movement) / currMovementLength;
+                    currCursorPosition = Vector2.Add(currCursorPosition, Vector2.Multiply(currMovement, (float)((currMovementLength - requiredMovement) / currMovementLength)));
+                    currMovementLength *= (currMovementLength - requiredMovement) / currMovementLength;
                     currDistance += currMovementLength;
                 }
-            }
 
-            // Use the path distance if it's less than the tick-based distance
-            if (currDistance < LazyTravelDistance)
-            {
-                LazyTravelDistance = currDistance;
-                LazyEndPosition = currCursorPosition;
+                // Use the path distance if it's less than the tick-based distance
+                if (i == positions.Count - 1)
+                {
+                    LazyTravelDistance = currDistance;
+                    LazyEndPosition = currCursorPosition;
+                }
             }
         }
 
