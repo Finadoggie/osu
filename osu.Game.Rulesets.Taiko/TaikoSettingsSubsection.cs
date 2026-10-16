@@ -2,6 +2,7 @@
 // See the LICENCE file in the repository root for full licence text.
 
 using osu.Framework.Allocation;
+using osu.Framework.Bindables;
 using osu.Framework.Graphics;
 using osu.Framework.Graphics.UserInterface;
 using osu.Game.Graphics.UserInterfaceV2;
@@ -32,6 +33,12 @@ namespace osu.Game.Rulesets.Taiko
                 {
                     Caption = RulesetSettingsStrings.TouchControlScheme,
                     Current = config.GetBindable<TaikoTouchControlScheme>(TaikoRulesetSetting.TouchControlScheme)
+                }),
+                new SettingsItemV2(new FormSliderBar<float>
+                {
+                    Caption = RulesetSettingsStrings.TouchDrumSpacing,
+                    Current = config.GetBindable<float>(TaikoRulesetSetting.TouchDrumSpacing),
+                    DisplayAsPercentage = true
                 }),
                 new SettingsItemV2(hitAnimations = new FormCheckBox
                 {

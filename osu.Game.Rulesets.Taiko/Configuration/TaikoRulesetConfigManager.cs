@@ -18,6 +18,7 @@ namespace osu.Game.Rulesets.Taiko.Configuration
             base.InitialiseDefaults();
 
             SetDefault(TaikoRulesetSetting.TouchControlScheme, TaikoTouchControlScheme.KDDK);
+            SetDefault(TaikoRulesetSetting.TouchDrumSpacing, 0.0f, 0.0f, 1.0f, 0.005f);
             SetDefault(TaikoRulesetSetting.RateAdjustedHitAnimation, true);
             SetDefault(TaikoRulesetSetting.HitAnimations, true);
         }
@@ -26,6 +27,7 @@ namespace osu.Game.Rulesets.Taiko.Configuration
     public enum TaikoRulesetSetting
     {
         TouchControlScheme,
+        TouchDrumSpacing,
         RateAdjustedHitAnimation,
         HitAnimations,
     }

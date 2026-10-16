@@ -32,7 +32,8 @@ namespace osu.Game.Rulesets.Taiko.UI
 
         private readonly Dictionary<object, TaikoAction> trackedActions = new Dictionary<object, TaikoAction>();
 
-        private Container mainContent = null!;
+        private Container leftContent = null!;
+        private Container rightContent = null!;
 
         private DrumSegment leftCentre = null!;
         private DrumSegment rightCentre = null!;
@@ -40,6 +41,7 @@ namespace osu.Game.Rulesets.Taiko.UI
         private DrumSegment rightRim = null!;
 
         private readonly Bindable<TaikoTouchControlScheme> configTouchControlScheme = new Bindable<TaikoTouchControlScheme>();
+        private readonly BindableFloat configTouchDrumSpacing = new BindableFloat() { MinValue = 0.0f, MaxValue = 1.0f, Precision = 0.005f };
 
         [BackgroundDependencyLoader]
         private void load(TaikoInputManager taikoInputManager, TaikoRulesetConfigManager config)
@@ -51,7 +53,8 @@ namespace osu.Game.Rulesets.Taiko.UI
             // Container should handle input everywhere.
             RelativeSizeAxes = Axes.Both;
 
-            const float centre_region = 0.80f;
+            const float outer_region = 2.00f;
+            const float centre_region = 1.60f;
 
             Children = new Drawable[]
             {
@@ -65,38 +68,57 @@ namespace osu.Game.Rulesets.Taiko.UI
                     Masking = true,
                     Children = new Drawable[]
                     {
-                        mainContent = new Container
+                        // Drum is split into two containers, with each container being one half of the screen
+                        // This allows drum positions to be easily positioned within each half, without breaking when aspect ratio changes
+                        leftContent = new Container
                         {
                             RelativeSizeAxes = Axes.Both,
+                            Width = 0.5f,
+                            X = -2,
+                            Anchor = Anchor.BottomLeft,
+                            Origin = Anchor.BottomLeft,
+                            Masking = true,
                             Children = new Drawable[]
                             {
                                 leftRim = new DrumSegment
                                 {
-                                    Anchor = Anchor.BottomCentre,
-                                    Origin = Anchor.BottomRight,
-                                    X = -2,
-                                },
-                                rightRim = new DrumSegment
-                                {
-                                    Anchor = Anchor.BottomCentre,
-                                    Origin = Anchor.BottomRight,
-                                    X = 2,
-                                    Rotation = 90,
+                                    Anchor = Anchor.BottomLeft,
+                                    Origin = Anchor.Centre,
+                                    RelativePositionAxes = Axes.X,
+                                    Scale = new Vector2(outer_region),
                                 },
                                 leftCentre = new DrumSegment
                                 {
-                                    Anchor = Anchor.BottomCentre,
-                                    Origin = Anchor.BottomRight,
-                                    X = -2,
+                                    Anchor = Anchor.BottomLeft,
+                                    Origin = Anchor.Centre,
+                                    RelativePositionAxes = Axes.X,
                                     Scale = new Vector2(centre_region),
+                                }
+                            }
+                        },
+                        rightContent = new Container
+                        {
+                            RelativeSizeAxes = Axes.Both,
+                            Width = 0.5f,
+                            X = 2,
+                            Anchor = Anchor.BottomRight,
+                            Origin = Anchor.BottomRight,
+                            Masking = true,
+                            Children = new Drawable[]
+                            {
+                                rightRim = new DrumSegment
+                                {
+                                    Anchor = Anchor.BottomLeft,
+                                    Origin = Anchor.Centre,
+                                    RelativePositionAxes = Axes.X,
+                                    Scale = new Vector2(outer_region),
                                 },
                                 rightCentre = new DrumSegment
                                 {
-                                    Anchor = Anchor.BottomCentre,
-                                    Origin = Anchor.BottomRight,
-                                    X = 2,
+                                    Anchor = Anchor.BottomLeft,
+                                    Origin = Anchor.Centre,
+                                    RelativePositionAxes = Axes.X,
                                     Scale = new Vector2(centre_region),
-                                    Rotation = 90,
                                 }
                             }
                         },
@@ -113,6 +135,17 @@ namespace osu.Game.Rulesets.Taiko.UI
                 leftCentre.Action = actions[1];
                 rightCentre.Action = actions[2];
                 rightRim.Action = actions[3];
+            }, true);
+
+            config.BindWith(TaikoRulesetSetting.TouchDrumSpacing, configTouchDrumSpacing);
+            configTouchDrumSpacing.BindValueChanged(spacing =>
+            {
+                float position = spacing.NewValue;
+
+                rightRim.X = position;
+                rightCentre.X = position;
+                leftRim.X = 1 - position;
+                leftCentre.X = 1 - position;
             }, true);
         }
 
@@ -203,12 +236,14 @@ namespace osu.Game.Rulesets.Taiko.UI
 
         protected override void PopIn()
         {
-            mainContent.FadeIn(500, Easing.OutQuint);
+            leftContent.FadeIn(500, Easing.OutQuint);
+            rightContent.FadeIn(500, Easing.OutQuint);
         }
 
         protected override void PopOut()
         {
-            mainContent.FadeOut(300);
+            leftContent.FadeOut(300);
+            rightContent.FadeOut(300);
         }
 
         private partial class DrumSegment : CompositeDrawable, IKeyBindingHandler<TaikoAction>
@@ -259,14 +294,12 @@ namespace osu.Game.Rulesets.Taiko.UI
                             {
                                 RelativeSizeAxes = Axes.Both,
                                 Alpha = 0.8f,
-                                Scale = new Vector2(2),
                             },
                             overlay = new Circle
                             {
                                 Alpha = 0,
                                 RelativeSizeAxes = Axes.Both,
                                 Blending = BlendingParameters.Additive,
-                                Scale = new Vector2(2),
                             }
                         }
                     },
