@@ -39,18 +39,24 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
 
             // Penalize angle repetition.
             snapDifficulty *= vectorAngleRepetition(osuCurrObj, osuLastObj);
-            snapDifficulty += calculateWideAngleBonus(osuCurrObj, osuLastObj, currDistance, prevDistance, withSliderTravelDistance);
-            snapDifficulty += calculateVelocityChangeBonus(withSliderTravelDistance, prevVelocity, currVelocity, currDistance, osuCurrObj, osuLastObj);
+
+            double bonuses = 0;
+
+            bonuses += calculateWideAngleBonus(osuCurrObj, osuLastObj, currDistance, prevDistance, withSliderTravelDistance);
+            bonuses += calculateVelocityChangeBonus(withSliderTravelDistance, prevVelocity, currVelocity, currDistance, osuCurrObj, osuLastObj);
 
             if (osuCurrObj.BaseObject is Slider && withSliderTravelDistance)
             {
-                snapDifficulty += calculateSliderBonus(osuCurrObj);
+                bonuses += calculateSliderBonus(osuCurrObj);
             }
+
+            snapDifficulty *= highBpmBonus(1 / currVelocity * 700); // Get faux deltatime based on x spacing jumps at current velocity
+
+            bonuses *= highBpmBonus(osuCurrObj.AdjustedDeltaTime);
+            snapDifficulty += bonuses;
 
             // Apply high circle size bonus
             snapDifficulty *= osuCurrObj.SmallCircleBonus;
-
-            snapDifficulty *= highBpmBonus(osuCurrObj.AdjustedDeltaTime);
 
             return snapDifficulty;
         }
