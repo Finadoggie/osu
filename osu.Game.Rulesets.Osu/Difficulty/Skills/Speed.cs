@@ -21,8 +21,19 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     /// </summary>
     public class Speed : Skill
     {
+        private class StaminaObject
+        {
+            public double time;
+            public double difficulty;
+            public const double rest_nerf_factor = 1.0;
+            public StaminaObject(double time, double difficulty)
+            {
+                this.time = time;
+                this.difficulty = difficulty;
+            }
+        }
         private readonly List<double> sliderStrains = new List<double>();
-		private readonly List<(double time, double difficulty)> timeDifficultyPairs = new List<(double, double)>();
+		private readonly List<StaminaObject> staminaMemory = new List<StaminaObject>();
 
         private double harmonicWeightSum;
 
@@ -41,11 +52,20 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 return 0;
 
 			double currentDifficulty = calculateAdjustedDifficulty(current);
-			timeDifficultyPairs.Add((current.StartTime, currentDifficulty));
+            StaminaObject currStaminaObj = new StaminaObject(current.StartTime, currentDifficulty);
+
+            DifficultyHitObject? previous = current.Previous();
+            // if we slow down, the player gets an opportunity to break and recover stamina, so reduce difficulty on previous notes
+            // should be adapted to account for small rhythm changes without breaking
+            if (previous != null && current.DeltaTime > previous.DeltaTime)
+            {
+                for (int i = 0; i < staminaMemory.Count(); i++)
+                    staminaMemory[i].difficulty *= StaminaObject.rest_nerf_factor;
+            }
 
 			double currentStrain = 0;
-			foreach ((double time, double difficulty) pair in timeDifficultyPairs)
-				currentStrain += pair.difficulty / DiffUtils.Pow(1 + strain_constant * (current.StartTime - pair.time) / 1000, 1.5);
+            foreach (StaminaObject obj in staminaMemory)
+                currentStrain += obj.difficulty / DiffUtils.Pow(1 + strain_constant * (current.StartTime - obj.time) / 1000, 1.5);
 
 			currentStrain *= skill_multiplier;
 
