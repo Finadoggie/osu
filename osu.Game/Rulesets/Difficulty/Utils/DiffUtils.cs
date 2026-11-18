@@ -230,5 +230,106 @@ namespace osu.Game.Rulesets.Difficulty.Utils
         /// </summary>
         /// <param name="x">Value to calculate the function for</param>
         public static double ErfcInv(double x) => ErfInv(1 - x);
+
+        /// <summary>
+        /// From https://github.com/mathnet/mathnet-numerics/blob/master/src/Numerics/SpecialFunctions/Gamma.cs.
+        /// Computes the Digamma function which is mathematically defined as the derivative of the logarithm of the gamma function.
+        /// This implementation is based on
+        ///     Jose Bernardo
+        ///     Algorithm AS 103:
+        ///     Psi ( Digamma ) Function,
+        ///     Applied Statistics,
+        ///     Volume 25, Number 3, 1976, pages 315-317.
+        /// Using the modifications as in Tom Minka's lightspeed toolbox.
+        /// </summary>
+        /// <param name="x">The argument of the digamma function.</param>
+        /// <returns>The value of the DiGamma function at <paramref name="x"/>.</returns>
+        public static double DiGamma(double x)
+        {
+            const double c = 12.0;
+            const double d1 = -0.57721566490153286;
+            const double d2 = 1.6449340668482264365;
+            const double s = 1e-6;
+            const double s3 = 1.0/12.0;
+            const double s4 = 1.0/120.0;
+            const double s5 = 1.0/252.0;
+            const double s6 = 1.0/240.0;
+            const double s7 = 1.0/132.0;
+
+            if (double.IsNegativeInfinity(x) || double.IsNaN(x))
+            {
+                return double.NaN;
+            }
+
+            // Handle special cases.
+            if (x <= 0 && Math.Floor(x) == x)
+            {
+                return double.NegativeInfinity;
+            }
+
+            // Use inversion formula for negative numbers.
+            if (x < 0)
+            {
+                return DiGamma(1.0 - x) + (Math.PI/Math.Tan(-Math.PI*x));
+            }
+
+            if (x <= s)
+            {
+                return d1 - (1/x) + (d2*x);
+            }
+
+            double result = 0;
+
+            while (x < c)
+            {
+                result -= 1/x;
+                x++;
+            }
+
+            if (x >= c)
+            {
+                var r = 1/x;
+                result += Math.Log(x) - (0.5*r);
+                r *= r;
+
+                result -= r*(s3 - (r*(s4 - (r*(s5 - (r*(s6 - (r*s7))))))));
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// <para>Computes the inverse Digamma function: this is the inverse of the logarithm of the gamma function. This function will
+        /// only return solutions that are positive.</para>
+        /// <para>This implementation is based on the bisection method.</para>
+        /// </summary>
+        /// <param name="p">The argument of the inverse digamma function.</param>
+        /// <returns>The positive solution to the inverse DiGamma function at <paramref name="p"/>.</returns>
+        public static double DiGammaInv(double p)
+        {
+            if (double.IsNaN(p))
+            {
+                return double.NaN;
+            }
+
+            if (double.IsNegativeInfinity(p))
+            {
+                return 0.0;
+            }
+
+            if (double.IsPositiveInfinity(p))
+            {
+                return double.PositiveInfinity;
+            }
+
+            double x = Math.Exp(p);
+
+            for (double d = 1.0; d > 1.0e-15; d /= 2.0)
+            {
+                x += d * Math.Sign(p - DiGamma(x));
+            }
+
+            return x;
+        }
     }
 }
