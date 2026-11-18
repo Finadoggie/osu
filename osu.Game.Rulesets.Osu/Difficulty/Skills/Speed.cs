@@ -23,13 +23,25 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     {
         private class StaminaObject
         {
-            public double time;
+            public double clock_time;
             public double difficulty;
-            public const double rest_nerf_factor = 1.0;
-            public StaminaObject(double time, double difficulty)
+            public double deltaTime;
+
+            private double ClockAdjustment(double delta)
             {
-                this.time = time;
+                // decay tuning parameter. Higher tau = less strain carried from one stream to the next.
+                // Increasing tau makes the strain graph spikier, and decreasing makes it smoother.
+                const double tau = 200;
+                // gap penalisation constant. higher q = stronger nerf for gaps
+                const double q = 1.5;
+                return delta * DiffUtils.Pow(1 + delta * tau, q - 1);
+            }
+
+            public StaminaObject(double difficulty, double last_clock, double deltaTime)
+            {
                 this.difficulty = difficulty;
+                this.deltaTime = deltaTime;
+                this.clock_time = last_clock + ClockAdjustment(deltaTime);
             }
         }
         private readonly List<double> sliderStrains = new List<double>();
@@ -46,26 +58,23 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double ProcessInternal(DifficultyHitObject current)
         {
-            const double skill_multiplier = 4.2;
+            const double skill_multiplier = 5.8;
 
             if (Mods.Any(m => m is OsuModRelax))
                 return 0;
 
 			double currentDifficulty = calculateAdjustedDifficulty(current);
-            StaminaObject currStaminaObj = new StaminaObject(current.StartTime, currentDifficulty);
 
-            DifficultyHitObject? previous = current.Previous();
-            // if we slow down, the player gets an opportunity to break and recover stamina, so reduce difficulty on previous notes
-            // should be adapted to account for small rhythm changes without breaking
-            if (previous != null && current.DeltaTime > previous.DeltaTime)
-            {
-                for (int i = 0; i < staminaMemory.Count(); i++)
-                    staminaMemory[i].difficulty *= StaminaObject.rest_nerf_factor;
-            }
+            double clock_time = 0;
+            if (staminaMemory.Count != 0)
+                clock_time = staminaMemory.Last().clock_time;
+
+            StaminaObject currStaminaObj = new StaminaObject(currentDifficulty, clock_time, current.DeltaTime / 1000);
+            staminaMemory.Add(currStaminaObj);
 
 			double currentStrain = 0;
             foreach (StaminaObject obj in staminaMemory)
-                currentStrain += obj.difficulty / DiffUtils.Pow(1 + strain_constant * (current.StartTime - obj.time) / 1000, 1.5);
+                currentStrain += obj.difficulty / (1 + strain_constant * (currStaminaObj.clock_time - obj.clock_time));
 
 			currentStrain *= skill_multiplier;
 
