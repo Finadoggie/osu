@@ -1,7 +1,6 @@
 ﻿// Copyright (c) ppy Pty Ltd <contact@ppy.sh>. Licensed under the MIT Licence.
 // See the LICENCE file in the repository root for full licence text.
 
-using System;
 using osu.Game.Rulesets.Difficulty.Preprocessing;
 using osu.Game.Rulesets.Difficulty.Utils;
 using osu.Game.Rulesets.Osu.Difficulty.Preprocessing;
@@ -24,17 +23,29 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Speed
                 return 0;
 
             var osuCurrObj = (OsuDifficultyHitObject)current;
-            double doubleTapFeasibility = 1.0 - osuCurrObj.CalculateDoubleTapFeasibility((OsuDifficultyHitObject?)osuCurrObj.Next(0));
+            var osuNextObj = (OsuDifficultyHitObject?)osuCurrObj.Next();
 
-            double speedDifficulty = DiffUtils.MillisecondsToBPM(osuCurrObj.AdjustedDeltaTime);
+            double deltaTime = osuCurrObj.AdjustedDeltaTime;
 
-            speedDifficulty *= calculateSpeedBonus(osuCurrObj);
+            if (osuNextObj != null)
+            {
+                const double next_delta_influence_on_doubletaps = 0.2;
 
-            // Apply penalty if there's doubletappable doubles
-            return speedDifficulty * doubleTapFeasibility;
+                // If the current and next object are a doubletappable double then we want to partially combine their delta times to treat it as a single press
+                double doubleTapFeasibility = osuCurrObj.CalculateDoubleTapFeasibility(osuNextObj);
+
+                deltaTime += osuNextObj.AdjustedDeltaTime *
+                             doubleTapFeasibility *
+                             next_delta_influence_on_doubletaps;
+            }
+
+            double speedDifficulty = DiffUtils.MillisecondsToBPM(deltaTime) *
+                                     calculateSpeedBonus(deltaTime);
+
+            return speedDifficulty;
         }
 
-        private static double calculateSpeedBonus(OsuDifficultyHitObject osuCurrObj)
+        private static double calculateSpeedBonus(double deltaTime)
         {
             double strainTime = osuCurrObj.AdjustedDeltaTime;
 
