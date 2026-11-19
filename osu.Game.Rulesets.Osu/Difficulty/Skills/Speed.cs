@@ -62,7 +62,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
             const double speed_multiplier = 38.5;
             const double burst_multiplier = 37.27;
-            const double stamina_multiplier = 0.057;
+            const double stamina_multiplier = 0.017;
 
             const double strain_stamina_norm = 2;
 
@@ -105,6 +105,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             double totalStrain = (DiffUtils.Norm(strain_stamina_norm, currentStrain, currentStamina, currentBurst)) * currentRhythm * final_multiplier;
             // double totalStrain = currentRhythm * (currentStamina + currentBurst + currentStrain);
+            // double totalStrain = currentRhythm * DiffUtils.Norm(strain_stamina_norm, currentStamina, currentStrain) * final_multiplier;
 
             if (current.BaseObject is Slider)
                 sliderStrains.Add(totalStrain);
@@ -140,33 +141,45 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (staminaMemory.Count == 0) return 0;
 
             const double lerp_percent = 0.01;
-            const double delta_time_scalar = 1.4;
+            const double delta_time_base_scalar = 1.0; // Applies to everything
+            const double delta_time_scalar = 1 / 1.4; // Only applies to strain summation
             const double delta_time_pow = 3;
 
             double currentStamina = 0;
             double currentSumTime = 0; // Offset start to make stamina scale differently
-            double maxDeltaTime = Math.Sqrt(1 / staminaMemory.Last().difficulty);
+            double maxDeltaTime = Math.Sqrt(1 / staminaMemory.Last().difficulty) * delta_time_base_scalar;
+            // Console.WriteLine(maxDeltaTime);
 
             for (int i = staminaMemory.Count - 1; i >= 0; i--)
             {
                 StaminaObject obj = staminaMemory[i];
-                double deltaTime = Math.Sqrt(1 / obj.difficulty) * delta_time_scalar;
+                double deltaTime = Math.Sqrt(1 / obj.difficulty) * delta_time_base_scalar;
 
                 currentStamina += (
-                    DiffUtils.DiGamma((currentSumTime + deltaTime + deltaTime * (obj.count - 1) + 1) / deltaTime) -
-                    DiffUtils.DiGamma((currentSumTime + 1) / deltaTime)
-                ) / DiffUtils.Pow(deltaTime, delta_time_pow);
-
+                    DiffUtils.DiGamma((currentSumTime + deltaTime * delta_time_scalar * (obj.count + 1) + 1.0) / (deltaTime * delta_time_scalar)) -
+                    DiffUtils.DiGamma((currentSumTime + 1) / (deltaTime * delta_time_scalar))
+                ) / (DiffUtils.Pow(deltaTime, delta_time_pow) * delta_time_scalar);
                 currentSumTime += deltaTime * obj.count;
 
+                // The code above is functionally identical to this
+                // for (int j = 0; j < obj.count; j++)
+                // {
+                //     currentStamina += obj.difficulty / (1 + delta_time_scalar * currentSumTime);
+                //     currentSumTime += deltaTime;
+                // }
+
                 maxDeltaTime = Math.Max(deltaTime, maxDeltaTime);
+
                 double assumedNumObjects = DiffUtils.DiGammaInv(
-                    currentStamina * DiffUtils.Pow(maxDeltaTime, delta_time_pow) + DiffUtils.DiGamma(1.0 / maxDeltaTime)
-                ) - (1.0 / maxDeltaTime) - 1;
+                    currentStamina * DiffUtils.Pow(maxDeltaTime, delta_time_pow) * delta_time_scalar + DiffUtils.DiGamma(1.0 / (maxDeltaTime * delta_time_scalar))
+                ) - (1.0 / (maxDeltaTime * delta_time_scalar)) - 1.0;
 
                 currentSumTime = Math.Max(currentSumTime, double.Lerp(currentSumTime, assumedNumObjects * maxDeltaTime, lerp_percent));
                 if (currentSumTime > 10_000) break;
             }
+
+            // Console.WriteLine(currentSumTime);
+            // Console.WriteLine(count);
 
             return currentStamina;
         }
