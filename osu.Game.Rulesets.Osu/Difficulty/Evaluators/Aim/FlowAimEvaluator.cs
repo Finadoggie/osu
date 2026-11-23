@@ -26,15 +26,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
             if (current.BaseObject is Spinner || osuLastObj == null || osuLastLastObj == null)
                 return 0;
 
-            double currDistance = withSliderTravelDistance ? osuCurrObj.LazyJumpDistance : osuCurrObj.JumpDistance;
-            double prevDistance = withSliderTravelDistance ? osuLastObj.LazyJumpDistance : osuLastObj.JumpDistance;
+            double currDistance = withSliderTravelDistance ? osuCurrObj.FullDistance : osuCurrObj.CircleDistance;
+            double prevDistance = withSliderTravelDistance ? osuLastObj.FullDistance : osuLastObj.CircleDistance;
 
-            double currVelocity = calculateCurrentVelocity(
-                osuCurrObj,
-                osuLastObj,
-                currDistance,
-                withSliderTravelDistance);
-
+            double currVelocity = currDistance / osuCurrObj.AdjustedDeltaTime;
             double prevVelocity = prevDistance / osuLastObj.AdjustedDeltaTime;
 
             double flowDifficulty = currVelocity;
@@ -52,11 +47,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
             flowDifficulty += calculateVelocityChangeBonus(
                 osuCurrObj,
                 osuLastObj,
-                currVelocity,
-                prevVelocity,
-                currDistance,
-                calculateOverlapWeight(osuCurrObj, osuLastObj, osuLastLastObj),
-                withSliderTravelDistance);
+                calculateOverlapWeight(osuCurrObj, osuLastObj, osuLastLastObj));
 
             if (osuCurrObj.BaseObject is Slider && withSliderTravelDistance)
             {
@@ -156,19 +147,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
         private static double calculateVelocityChangeBonus(
             OsuDifficultyHitObject current,
             OsuDifficultyHitObject previous,
-            double currVelocity,
-            double prevVelocity,
-            double currDistance,
-            double overlappedNotesWeight,
-            bool withSliderTravelDistance)
+            double overlappedNotesWeight)
         {
             const double velocity_change_multiplier = 1.9;
 
+            // We want to use just the object jump without slider velocity when awarding differences
+            double currVelocity = current.CircleDistance / current.AdjustedDeltaTime;
+            double prevVelocity = previous.CircleDistance / previous.AdjustedDeltaTime;
+
             if (Math.Max(prevVelocity, currVelocity) == 0)
                 return 0;
-
-            if (withSliderTravelDistance)
-                currVelocity = currDistance / current.AdjustedDeltaTime;
 
             const double velocity_distance_cap = OsuDifficultyHitObject.NORMALISED_DIAMETER * 1.1;
 
@@ -189,20 +177,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
 
         private static double calculateSliderBonus(OsuDifficultyHitObject current)
             => current.TravelDistance / current.TravelTime;
-
-        private static double calculateCurrentVelocity(OsuDifficultyHitObject current, OsuDifficultyHitObject previous, double currDistance, bool withSliderTravelDistance)
-        {
-            double currVelocity = currDistance / current.AdjustedDeltaTime;
-
-            // If the last object is a slider, then we extend the travel velocity through the slider into the current object.
-            if (previous.BaseObject is Slider && withSliderTravelDistance)
-            {
-                double sliderDistance = previous.LazyTravelDistance + current.LazyJumpDistance;
-                currVelocity = Math.Max(currVelocity, sliderDistance / current.AdjustedDeltaTime);
-            }
-
-            return currVelocity;
-        }
 
         private static double calculateOverlapWeight(OsuDifficultyHitObject current, OsuDifficultyHitObject previous, OsuDifficultyHitObject lastLast)
         {

@@ -35,7 +35,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
             if (osuPrevObj != null)
             {
                 previousDelta = osuPrevObj.AdjustedDeltaTime *
-                                DiffUtils.ReverseLerp(osuPrevObj.LazyJumpDistance, OsuDifficultyHitObject.NORMALISED_RADIUS, 0);
+                                DiffUtils.ReverseLerp(osuPrevObj.FullDistance, OsuDifficultyHitObject.NORMALISED_RADIUS, 0);
             }
 
             double combinedDelta = currentDelta + previousDelta * previous_delta_influence;
@@ -63,7 +63,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
 
             return acutenessDifference *
                    rhythmDifferencePenalty *
-                   DiffUtils.ReverseLerp(osuPrevObj.LazyJumpDistance, OsuDifficultyHitObject.NORMALISED_RADIUS, OsuDifficultyHitObject.NORMALISED_DIAMETER) *
+                   DiffUtils.ReverseLerp(osuPrevObj.FullDistance, OsuDifficultyHitObject.NORMALISED_RADIUS, OsuDifficultyHitObject.NORMALISED_DIAMETER) *
                    angle_switching_bonus;
         }
     }

@@ -49,7 +49,12 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         /// <summary>
         /// Normalised distance from the start position of the previous <see cref="OsuDifficultyHitObject"/> to the start position of this <see cref="OsuDifficultyHitObject"/>.
         /// </summary>
-        public double JumpDistance { get; private set; }
+        public double CircleDistance { get; private set; }
+
+        /// <summary>
+        /// Normalised distance from the start position of the previous <see cref="OsuDifficultyHitObject"/> to the start position of this <see cref="OsuDifficultyHitObject"/>, including the slider travel distance.
+        /// </summary>
+        public double FullDistance { get; private set; }
 
         /// <summary>
         /// Normalised distance from the "lazy" end position of the previous <see cref="OsuDifficultyHitObject"/> to the start position of this <see cref="OsuDifficultyHitObject"/>.
@@ -190,7 +195,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
             double windowRatio = DiffUtils.Pow(Math.Min(1, currDeltaTime / HitWindowGreat), 5);
 
             // Can't doubletap if circles don't intersect
-            double distanceFactor = DiffUtils.Pow(DiffUtils.ReverseLerp(LazyJumpDistance, NORMALISED_DIAMETER, NORMALISED_RADIUS), 2);
+            double distanceFactor = DiffUtils.Pow(DiffUtils.ReverseLerp(FullDistance, NORMALISED_DIAMETER, NORMALISED_RADIUS), 2);
 
             return 1.0 - DiffUtils.Pow(speedRatio, distanceFactor * (1 - windowRatio));
         }
@@ -219,12 +224,16 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
 
             Vector2 lastCursorPosition = lastDifficultyObject != null ? getEndCursorPosition(lastDifficultyObject) : LastObject.StackedPosition;
 
-            JumpDistance = (LastObject.StackedPosition - BaseObject.StackedPosition).Length * scalingFactor;
+            CircleDistance = (LastObject.StackedPosition - BaseObject.StackedPosition).Length * scalingFactor;
             LazyJumpDistance = (BaseObject.StackedPosition - lastCursorPosition).Length * scalingFactor;
             MinimumJumpDistance = LazyJumpDistance;
 
+            FullDistance = LazyJumpDistance;
+
             if (LastObject is Slider lastSlider && lastDifficultyObject != null)
             {
+                FullDistance = LazyJumpDistance + lastDifficultyObject.LazyTravelDistance;
+
                 double lastTravelTime = Math.Max(lastDifficultyObject.LazyTravelTime / clockRate, MIN_DELTA_TIME);
                 MinimumJumpTime = Math.Max(AdjustedDeltaTime - lastTravelTime, MIN_DELTA_TIME);
 
