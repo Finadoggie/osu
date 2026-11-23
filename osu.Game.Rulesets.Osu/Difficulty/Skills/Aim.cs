@@ -60,6 +60,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             const double skill_multiplier_agility = 32.5;
             const double skill_multiplier_flow = 251.0;
             const double skill_multiplier_spinner = 22.0;
+            const double skill_multiplier_slider = 85.5;
 
             if (current.BaseObject is Spinner)
                 return SpinnerEvaluator.EvaluateDifficultyOf(current) * skill_multiplier_spinner;
@@ -67,8 +68,9 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double snapDifficulty = SnapAimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skill_multiplier_snap;
             double agilityDifficulty = AgilityEvaluator.EvaluateDifficultyOf(current) * skill_multiplier_agility;
             double flowDifficulty = FlowAimEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skill_multiplier_flow;
+            double sliderBonusDifficulty = SliderBonusEvaluator.EvaluateDifficultyOf(current, IncludeSliders) * skill_multiplier_slider;
 
-            double totalDifficulty = calculateTotalValue(snapDifficulty, agilityDifficulty, flowDifficulty);
+            double totalDifficulty = calculateTotalValue(snapDifficulty, agilityDifficulty, flowDifficulty, sliderBonusDifficulty);
 
             if (Mods.Any(m => m is OsuModMagnetised))
             {
@@ -81,7 +83,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return totalDifficulty;
         }
 
-        private double calculateTotalValue(double snapDifficulty, double agilityDifficulty, double flowDifficulty)
+        private double calculateTotalValue(double snapDifficulty, double agilityDifficulty, double flowDifficulty, double sliderBonusDifficulty)
         {
             const double skill_multiplier_total = 1.18;
             const double combined_snap_norm_exponent = 1.5;
@@ -107,7 +109,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 flowDifficulty *= 0.6;
             }
 
-            double totalDifficulty = combinedSnapDifficulty * pSnap + flowDifficulty * pFlow;
+            double totalDifficulty = combinedSnapDifficulty * pSnap + flowDifficulty * pFlow + sliderBonusDifficulty;
 
             double totalStrain = totalDifficulty * skill_multiplier_total;
 

@@ -42,10 +42,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
             snapDifficulty += calculateWideAngleBonus(osuCurrObj, osuLastObj, currDistance, prevDistance, withSliderTravelDistance);
             snapDifficulty += calculateVelocityChangeBonus(withSliderTravelDistance, prevVelocity, currVelocity, currDistance, osuCurrObj, osuLastObj);
 
-            if (osuCurrObj.BaseObject is Slider && withSliderTravelDistance)
-            {
-                snapDifficulty += calculateSliderBonus(osuCurrObj);
-            }
+            // if (osuCurrObj.BaseObject is Slider && withSliderTravelDistance)
+            // {
+            //     snapDifficulty += calculateSliderBonus(osuCurrObj);
+            // }
 
             // Apply high circle size bonus
             snapDifficulty += osuCurrObj.SmallCircleBonus * 3.25;

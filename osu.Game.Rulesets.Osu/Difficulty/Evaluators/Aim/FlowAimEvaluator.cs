@@ -58,10 +58,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Evaluators.Aim
                 calculateOverlapWeight(osuCurrObj, osuLastObj, osuLastLastObj),
                 withSliderTravelDistance);
 
-            if (osuCurrObj.BaseObject is Slider && withSliderTravelDistance)
-            {
-                flowDifficulty += calculateSliderBonus(osuCurrObj);
-            }
+            // if (osuCurrObj.BaseObject is Slider && withSliderTravelDistance)
+            // {
+            //     flowDifficulty += calculateSliderBonus(osuCurrObj);
+            // }
 
             // Final velocity is being raised to a power because flow difficulty scales harder with both high distance and time, and we want to account for that
             flowDifficulty = DiffUtils.Pow(flowDifficulty, 1.45);
