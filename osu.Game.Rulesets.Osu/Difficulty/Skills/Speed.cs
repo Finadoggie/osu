@@ -22,7 +22,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     {
         private class StaminaObject
         {
-            public readonly double DeltaTime;
+            public readonly double DifficultyReciprocal;
             public double Count;
 
             // private double clockAdjustment(double delta)
@@ -37,7 +37,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             public StaminaObject(double deltaTime)
             {
-                this.DeltaTime = deltaTime;
+                this.DifficultyReciprocal = deltaTime;
                 this.Count = 1;
             }
         }
@@ -45,8 +45,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         private readonly List<double> sliderStrains = new List<double>();
         private readonly List<StaminaObject> staminaMemory = new List<StaminaObject>();
 
-        private double currentStrain;
-        private double currentBurst;
         private double harmonicWeightSum;
 
         public Speed(Mod[] mods)
@@ -54,40 +52,22 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
         }
 
-        private double calculateStrainDecay(double ms) => DiffUtils.Pow(0.3, ms / 1000);
-        private double calculateBurstDecay(double ms) => DiffUtils.Pow(0.01, ms / 1000);
-
         protected override double ProcessInternal(DifficultyHitObject current)
         {
-            // const double speed_multiplier = 38.5;
-            // const double burst_multiplier = 37.27;
-            const double stamina_multiplier = 0.017;
-
-            const double strain_stamina_norm = 2;
-
-            const double final_multiplier = 1.1;
+            const double stamina_multiplier = 13.0;
 
             if (Mods.Any(m => m is OsuModRelax))
                 return 0;
 
-            // double currentDifficulty = calculateAdjustedDifficulty(current);
+            double currentDifficulty = calculateAdjustedDifficulty(current);
             double currentRhythm = RhythmEvaluator.EvaluateDifficultyOf(current);
 
-            // double strainDecay = calculateStrainDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
-            // double burstDecay = calculateBurstDecay(((OsuDifficultyHitObject)current).AdjustedDeltaTime);
-
-            // currentStrain *= strainDecay;
-            // currentStrain += currentDifficulty * (1 - strainDecay) * speed_multiplier;
-            //
-            // currentBurst *= burstDecay;
-            // currentBurst += currentDifficulty * (1 - burstDecay) * burst_multiplier;
-
-            StaminaObject currStaminaObj = new StaminaObject(StaminaEvaluator.GetDeltaTimeOf(current));
+            StaminaObject currStaminaObj = new StaminaObject(1.0 / currentDifficulty);
 
             if (staminaMemory.Count > 0)
             {
-                double adjustedCurrDeltaTime = currStaminaObj.DeltaTime;
-                double adjustedPrevDeltaTime = staminaMemory.Last().DeltaTime;
+                double adjustedCurrDeltaTime = currStaminaObj.DifficultyReciprocal;
+                double adjustedPrevDeltaTime = staminaMemory.Last().DifficultyReciprocal;
 
                 if (Math.Max(adjustedCurrDeltaTime, adjustedPrevDeltaTime) > 1.1 * Math.Min(adjustedCurrDeltaTime, adjustedPrevDeltaTime))
                     staminaMemory.Add(currStaminaObj);
@@ -100,9 +80,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             }
 
             double currentStamina = calculateStaminaStrain() * stamina_multiplier;
-
-            // double totalStrain = (DiffUtils.Norm(strain_stamina_norm, currentStrain, currentStamina, currentBurst)) * currentRhythm * final_multiplier;
-            // double totalStrain = currentRhythm * DiffUtils.Norm(strain_stamina_norm, currentStamina, currentStrain) * final_multiplier;
 
             double totalStrain = currentRhythm * currentStamina;
 
@@ -122,57 +99,46 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return difficulty;
         }
 
-        private double calculateAdjustedStaminaDifficulty(DifficultyHitObject current)
-        {
-            double difficulty = StaminaEvaluator.EvaluateDifficultyOf(current);
-
-            if (Mods.Any(m => m is OsuModAutopilot))
-                difficulty *= 0.5;
-
-            return difficulty;
-        }
-
         // Useful links for stamina strain calc
         // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2CPower%5Bt%2C2%5D%5D*Divide%5B1%2C%5C%2840%29kt%2B1%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C0%2Cx%7D%5D
         // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2CPower%5Bt%2C2%5D%5C%2840%29kt%2Ba%2B1%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C0%2Cx%7D%5D
+        // The actual one that matters
+        // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2C%5C%2840%29k*Power%5Bt%2C3%5D%2Ba%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C1%2Cx*5%7D%5D
         private double calculateStaminaStrain()
         {
             if (staminaMemory.Count == 0) return 0;
 
-            const double lerp_percent = 0.01;
-            const double delta_time_base_scalar = 1.0; // Applies to everything
-            const double delta_time_scalar = 1 / 1.4; // Only applies to strain summation
-            const double delta_time_pow = 3;
+            const double count_scalar = 1;
 
             double currentStamina = 0;
-            double currentSumTime = 0; // Offset start to make stamina scale differently
-            double maxDeltaTime = staminaMemory.Last().DeltaTime * delta_time_base_scalar;
-            // Console.WriteLine(maxDeltaTime);
+            double tSum = 0;
 
             for (int i = staminaMemory.Count - 1; i >= 0; i--)
             {
                 StaminaObject obj = staminaMemory[i];
-                double deltaTime = obj.DeltaTime * delta_time_base_scalar;
 
-                // currentStamina += (
-                //     DiffUtils.DiGamma((currentSumTime + deltaTime * delta_time_scalar * (obj.count + 1) + 1.0) / (deltaTime * delta_time_scalar)) -
-                //     DiffUtils.DiGamma((currentSumTime + 1) / (deltaTime * delta_time_scalar))
-                // ) / (DiffUtils.Pow(deltaTime, delta_time_pow) * delta_time_scalar);
-                // currentSumTime += deltaTime * obj.count;
+                double t = obj.DifficultyReciprocal;
+                double x = obj.Count * count_scalar;
 
-                for (int j = 0; j < obj.Count; j++)
-                {
-                    currentStamina += 1 / (1 + currentSumTime);
-                    currentSumTime += Math.Pow(deltaTime, 3);
-                }
+                currentStamina += (
+                    DiffUtils.DiGamma(tSum / t + x + 1.0) -
+                    DiffUtils.DiGamma(tSum / t + 1.0)
+                ) / t;
+                tSum += t * x;
 
-                // maxDeltaTime = Math.Max(deltaTime, maxDeltaTime);
+                //
+                // The function above produces identical values to this:
+                //
+                // for (int j = 0; j < obj.Count * count_scalar; j++)
+                // {
+                //     tSum += t;
+                //     currentStamina += 1 / (tSum);
+                // }
+                //
 
-                if (currentSumTime > 10_000) break;
+                if (tSum > 10_000_000)
+                    break;
             }
-
-            // Console.WriteLine(currentSumTime);
-            // Console.WriteLine(count);
 
             return currentStamina;
         }
