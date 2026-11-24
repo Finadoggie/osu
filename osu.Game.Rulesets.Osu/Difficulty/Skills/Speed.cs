@@ -52,22 +52,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double currentDifficulty = calculateAdjustedDifficulty(current);
             double currentRhythm = RhythmEvaluator.EvaluateDifficultyOf(current);
 
-            StaminaObject currStaminaObj = new StaminaObject(1.0 / currentDifficulty);
-
-            if (staminaMemory.Count > 0)
-            {
-                double adjustedCurrDeltaTime = currStaminaObj.DifficultyReciprocal;
-                double adjustedPrevDeltaTime = staminaMemory.Last().DifficultyReciprocal;
-
-                if (Math.Max(adjustedCurrDeltaTime, adjustedPrevDeltaTime) > 1.1 * Math.Min(adjustedCurrDeltaTime, adjustedPrevDeltaTime))
-                    staminaMemory.Add(currStaminaObj);
-                else
-                    staminaMemory.Last().Count++;
-            }
-            else
-            {
-                staminaMemory.Add(currStaminaObj);
-            }
+            addStaminaMemory(currentDifficulty);
 
             double currentStamina = calculateStaminaStrain() * stamina_multiplier;
 
@@ -89,8 +74,22 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             return difficulty;
         }
 
+        private void addStaminaMemory(double difficulty)
+        {
+            StaminaObject curr = new StaminaObject(1.0 / difficulty);
+
+            if (staminaMemory.LastOrDefault() is StaminaObject last && Math.Max(curr.DifficultyReciprocal, last.DifficultyReciprocal) <= 1.1 * Math.Min(curr.DifficultyReciprocal, last.DifficultyReciprocal))
+            {
+                last.Count++;
+            }
+            else
+            {
+                staminaMemory.Add(curr);
+            }
+        }
+
         // Useful links for stamina strain calc
-        // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2C%5C%2840%29k*Power%5Bt%2C3%5D%2Ba%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C1%2Cx*5%7D%5D
+        // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2C%5C%2840%29k*t%2Ba%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C1%2Cx%7D%5D
         private double calculateStaminaStrain()
         {
             if (staminaMemory.Count == 0) return 0;
@@ -117,7 +116,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 //
                 // The function above produces identical values to this:
                 //
-                // for (int j = 0; j < obj.Count * count_scalar; j++)
+                // for (int j = 0; j < x; j++)
                 // {
                 //     tSum += t;
                 //     currentStamina += 1 / tSum;
