@@ -44,7 +44,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double ProcessInternal(DifficultyHitObject current)
         {
-            const double stamina_multiplier = 13.0;
+            const double stamina_multiplier = 11.98;
 
             if (Mods.Any(m => m is OsuModRelax))
                 return 0;
@@ -95,7 +95,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         {
             if (staminaMemory.Count == 0) return 0;
 
-            const double count_scalar = 1;
+            const double count_scalar = 1; // Used to horizontally stretch/squish the final result
             const double stop_factor = 10_000;
 
             double currentStamina = 0;
@@ -136,7 +136,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (ObjectDifficulties.Count == 0)
                 return 0;
 
-            (double difficulty, harmonicWeightSum) = HarmonicSeries.Aggregate(ObjectDifficulties, harmonicScale: 60, decayExponent: 1.10);
+            (double difficulty, harmonicWeightSum) = HarmonicSeries.Aggregate(ObjectDifficulties, harmonicScale: 20);
 
             return difficulty;
         }
