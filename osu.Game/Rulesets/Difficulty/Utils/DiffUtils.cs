@@ -297,39 +297,5 @@ namespace osu.Game.Rulesets.Difficulty.Utils
 
             return result;
         }
-
-        /// <summary>
-        /// <para>Computes the inverse Digamma function: this is the inverse of the logarithm of the gamma function. This function will
-        /// only return solutions that are positive.</para>
-        /// <para>This implementation is based on the bisection method.</para>
-        /// </summary>
-        /// <param name="p">The argument of the inverse digamma function.</param>
-        /// <returns>The positive solution to the inverse DiGamma function at <paramref name="p"/>.</returns>
-        public static double DiGammaInv(double p)
-        {
-            if (double.IsNaN(p))
-            {
-                return double.NaN;
-            }
-
-            if (double.IsNegativeInfinity(p))
-            {
-                return 0.0;
-            }
-
-            if (double.IsPositiveInfinity(p))
-            {
-                return double.PositiveInfinity;
-            }
-
-            double x = Math.Exp(p);
-
-            for (double d = 1.0; d > 1.0e-15; d /= 2.0)
-            {
-                x += d * Math.Sign(p - DiGamma(x));
-            }
-
-            return x;
-        }
     }
 }
