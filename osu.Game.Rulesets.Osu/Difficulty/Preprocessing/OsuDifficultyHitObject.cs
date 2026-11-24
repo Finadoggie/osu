@@ -30,8 +30,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Preprocessing
         protected new OsuHitObject BaseObject => (OsuHitObject)base.BaseObject;
         protected new OsuHitObject LastObject => (OsuHitObject)base.LastObject;
 
-		public double SpeedDifficulty = 0;
-
         /// <summary>
         /// <see cref="DifficultyHitObject.DeltaTime"/> capped to a minimum of <see cref="MIN_DELTA_TIME"/>ms.
         /// </summary>

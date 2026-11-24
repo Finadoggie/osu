@@ -25,20 +25,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             public readonly double DifficultyReciprocal;
             public double Count;
 
-            // private double clockAdjustment(double delta)
-            // {
-            //     // decay tuning parameter. Higher tau = less strain carried from one stream to the next.
-            //     // Increasing tau makes the strain graph spikier, and decreasing makes it smoother.
-            //     const double tau = 200;
-            //     // gap penalisation constant. higher q = stronger nerf for gaps
-            //     const double q = 1.5;
-            //     return delta * DiffUtils.Pow(1 + delta * tau, q - 1);
-            // }
-
             public StaminaObject(double deltaTime)
             {
-                this.DifficultyReciprocal = deltaTime;
-                this.Count = 1;
+                DifficultyReciprocal = deltaTime;
+                Count = 1;
             }
         }
 
@@ -100,9 +90,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
         }
 
         // Useful links for stamina strain calc
-        // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2CPower%5Bt%2C2%5D%5D*Divide%5B1%2C%5C%2840%29kt%2B1%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C0%2Cx%7D%5D
-        // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2CPower%5Bt%2C2%5D%5C%2840%29kt%2Ba%2B1%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C0%2Cx%7D%5D
-        // The actual one that matters
         // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2C%5C%2840%29k*Power%5Bt%2C3%5D%2Ba%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C1%2Cx*5%7D%5D
         private double calculateStaminaStrain()
         {
