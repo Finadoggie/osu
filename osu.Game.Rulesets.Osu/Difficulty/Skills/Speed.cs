@@ -109,6 +109,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (staminaMemory.Count == 0) return 0;
 
             const double count_scalar = 1;
+            const double stop_factor = 10_000;
 
             double currentStamina = 0;
             double tSum = 0;
@@ -132,11 +133,11 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 // for (int j = 0; j < obj.Count * count_scalar; j++)
                 // {
                 //     tSum += t;
-                //     currentStamina += 1 / (tSum);
+                //     currentStamina += 1 / tSum;
                 // }
                 //
 
-                if (tSum > 10_000_000)
+                if (currentStamina > 1.0 / tSum * stop_factor)
                     break;
             }
 
