@@ -160,7 +160,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                         staminaMemory.RemoveAt(i);
                         i--;
                         staminaMemory[i] = averageStaminaObjects(s, staminaMemory[i]);
-                        // Console.WriteLine("Merged");
                     }
 
                     StaminaObject obj = staminaMemory[i];
@@ -200,7 +199,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 x = avg.Count * count_scalar;
                 avgSum += calculateObject(tSum, t, x);
 
-                return Math.Max(individualSum, avgSum) <= 1.1 * Math.Min(individualSum, avgSum);
+                return Math.Max(individualSum, avgSum) <= 1.01 * Math.Min(individualSum, avgSum);
             }
 
             private static StaminaObject averageStaminaObjects(StaminaObject s1, StaminaObject s2) => new StaminaObject(
