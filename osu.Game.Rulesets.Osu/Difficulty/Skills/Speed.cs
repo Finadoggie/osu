@@ -44,7 +44,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double ProcessInternal(DifficultyHitObject current)
         {
-            const double stamina_multiplier = 11.98;
+            const double stamina_multiplier = 12.4;
 
             if (Mods.Any(m => m is OsuModRelax))
                 return 0;
@@ -150,7 +150,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             if (maxStrain == 0)
                 return 0;
 
-            return ObjectDifficulties.Sum(strain => DiffUtils.Logistic(strain / maxStrain, 0.5, 12.0));
+            return ObjectDifficulties.Sum(strain => DiffUtils.Logistic(strain / maxStrain, 0.62, 12.0));
         }
 
         public virtual double CountTopWeightedObjectDifficulties(double difficultyValue)
