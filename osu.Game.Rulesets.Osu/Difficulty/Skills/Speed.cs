@@ -20,20 +20,8 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
     /// </summary>
     public class Speed : Skill
     {
-        private class StaminaObject
-        {
-            public readonly double DifficultyReciprocal;
-            public double Count;
-
-            public StaminaObject(double deltaTime)
-            {
-                DifficultyReciprocal = deltaTime;
-                Count = 1;
-            }
-        }
-
         private readonly List<double> sliderStrains = new List<double>();
-        private readonly List<StaminaObject> staminaMemory = new List<StaminaObject>();
+        private readonly StaminaStrain staminaStrain = new StaminaStrain();
 
         private double harmonicWeightSum;
 
@@ -44,7 +32,7 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
         protected override double ProcessInternal(DifficultyHitObject current)
         {
-            const double stamina_multiplier = 12.4;
+            const double skill_multiplier = 12.4;
 
             if (Mods.Any(m => m is OsuModRelax))
                 return 0;
@@ -52,11 +40,10 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
             double currentDifficulty = calculateAdjustedDifficulty(current);
             double currentRhythm = RhythmEvaluator.EvaluateDifficultyOf(current);
 
-            addStaminaMemory(currentDifficulty);
+            staminaStrain.AddDifficulty(currentDifficulty);
+            double currentStamina = staminaStrain.CalculateStaminaStrain();
 
-            double currentStamina = calculateStaminaStrain() * stamina_multiplier;
-
-            double totalStrain = currentRhythm * currentStamina;
+            double totalStrain = currentRhythm * currentStamina * skill_multiplier;
 
             if (current.BaseObject is Slider)
                 sliderStrains.Add(totalStrain);
@@ -72,62 +59,6 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
                 difficulty *= 0.5;
 
             return difficulty;
-        }
-
-        private void addStaminaMemory(double difficulty)
-        {
-            StaminaObject curr = new StaminaObject(1.0 / difficulty);
-
-            if (staminaMemory.LastOrDefault() is StaminaObject last && Math.Max(curr.DifficultyReciprocal, last.DifficultyReciprocal) <= 1.1 * Math.Min(curr.DifficultyReciprocal, last.DifficultyReciprocal))
-            {
-                last.Count++;
-            }
-            else
-            {
-                staminaMemory.Add(curr);
-            }
-        }
-
-        // Useful links for stamina strain calc
-        // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2C%5C%2840%29k*t%2Ba%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C1%2Cx%7D%5D
-        private double calculateStaminaStrain()
-        {
-            if (staminaMemory.Count == 0) return 0;
-
-            const double count_scalar = 1; // Used to horizontally stretch/squish the final result
-            const double stop_factor = 10_000;
-
-            double currentStamina = 0;
-            double tSum = 0;
-
-            for (int i = staminaMemory.Count - 1; i >= 0; i--)
-            {
-                StaminaObject obj = staminaMemory[i];
-
-                double t = obj.DifficultyReciprocal;
-                double x = obj.Count * count_scalar;
-
-                currentStamina += (
-                    DiffUtils.DiGamma(tSum / t + x + 1.0) -
-                    DiffUtils.DiGamma(tSum / t + 1.0)
-                ) / t;
-                tSum += t * x;
-
-                //
-                // The function above produces identical values to this:
-                //
-                // for (int j = 0; j < x; j++)
-                // {
-                //     tSum += t;
-                //     currentStamina += 1 / tSum;
-                // }
-                //
-
-                if (currentStamina > 1.0 / tSum * stop_factor)
-                    break;
-            }
-
-            return currentStamina;
         }
 
         public override double DifficultyValue()
@@ -184,6 +115,120 @@ namespace osu.Game.Rulesets.Osu.Difficulty.Skills
 
             // Use a weighted sum of all notes. Constants are arbitrary and give nice values
             return sliderStrains.Sum(s => DiffUtils.Logistic(s / consistentTopObject, 0.88, 10, 1.1));
+        }
+
+        private class StaminaStrain
+        {
+            private readonly record struct StaminaObject
+            {
+                public readonly double DifficultyReciprocal;
+                public readonly double Count;
+
+                public StaminaObject(double difficultyReciprocal, double count = 1)
+                {
+                    DifficultyReciprocal = difficultyReciprocal;
+                    Count = count;
+                }
+            }
+
+            private const int count_scalar = 1; // Can be used to horizontally stretch/squish the final result
+
+            private readonly List<StaminaObject> staminaMemory = new List<StaminaObject>();
+
+            public void AddDifficulty(double difficulty)
+            {
+                StaminaObject curr = new StaminaObject(1.0 / difficulty);
+
+                staminaMemory.Add(curr);
+            }
+
+            // Useful links for stamina strain calc
+            // https://www.wolframalpha.com/input?i2d=true&i=Sum%5B%5C%2840%29Divide%5B1%2C%5C%2840%29k*t%2Ba%5C%2841%29%5D%5C%2841%29%2C%7Bk%2C1%2Cx%7D%5D
+            public double CalculateStaminaStrain()
+            {
+                if (staminaMemory.Count == 0) return 0;
+
+                double currentStamina = 0;
+                double tSum = 0;
+
+                for (int i = staminaMemory.Count - 1; i >= 0; i--)
+                {
+                    // Always combine objects where possible
+                    while (i > 0 && canMerge(staminaMemory[i], staminaMemory[i - 1], tSum))
+                    {
+                        StaminaObject s = staminaMemory[i];
+                        staminaMemory.RemoveAt(i);
+                        i--;
+                        staminaMemory[i] = averageStaminaObjects(s, staminaMemory[i]);
+                        // Console.WriteLine("Merged");
+                    }
+
+                    StaminaObject obj = staminaMemory[i];
+
+                    double t = obj.DifficultyReciprocal;
+                    double x = obj.Count * count_scalar;
+
+                    currentStamina += calculateObject(tSum, t, x);
+                    tSum += t * x;
+                }
+
+                return currentStamina;
+            }
+
+            private static bool canMerge(StaminaObject s1, StaminaObject s2, double tSumBase)
+            {
+                double individualSum = 0;
+                double avgSum = 0;
+
+                // Calculate strain objects separately
+                double tSum = tSumBase;
+
+                double t = s1.DifficultyReciprocal;
+                double x = s1.Count * count_scalar;
+                individualSum += calculateObject(tSum, t, x);
+                tSum += t * x;
+
+                t = s2.DifficultyReciprocal;
+                x = s2.Count * count_scalar;
+                individualSum += calculateObject(tSum, t, x);
+
+                // Calculate averaged stamina objects
+                StaminaObject avg = averageStaminaObjects(s1, s2);
+                tSum = tSumBase;
+
+                t = avg.DifficultyReciprocal;
+                x = avg.Count * count_scalar;
+                avgSum += calculateObject(tSum, t, x);
+
+                return Math.Max(individualSum, avgSum) <= 1.1 * Math.Min(individualSum, avgSum);
+            }
+
+            private static StaminaObject averageStaminaObjects(StaminaObject s1, StaminaObject s2) => new StaminaObject(
+                (s1.DifficultyReciprocal * s1.Count + s2.DifficultyReciprocal * s2.Count) / (s1.Count + s2.Count),
+                s1.Count + s2.Count);
+
+            private static double calculateObject(double tSum, double t, double x)
+            {
+                // Simpler calculation for small values
+                if (x < 12)
+                {
+                    double currentStamina = 0;
+
+                    for (int j = 0; j < x; j++)
+                    {
+                        tSum += t;
+                        currentStamina += 1 / tSum;
+                    }
+
+                    return currentStamina;
+                }
+
+                // Faster when calculating in bulk
+                return (
+                    DiffUtils.DiGamma(tSum / t + x + 1.0) -
+                    DiffUtils.DiGamma(tSum / t + 1.0)
+                ) / t;
+            }
         }
     }
 }
